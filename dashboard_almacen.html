@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Objetivos y Metas - Almacén</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background:#f0f4f8; color:#1a1a2e; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #0d3b6e, #1565c0);
+    text-align:center; padding: 14px 20px;
+    border-bottom: 3px solid #1976d2;
+  }
+  .header h1 { font-size:1.3rem; font-weight:700; color:#fff; text-transform:uppercase; }
+  .header h2 { font-size:0.95rem; color:#bbdefb; margin-top:4px; }
+
+  /* PESTAÑAS */
+  .page-tabs { display:flex; background:#fff; border-bottom:2px solid #1565c0; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .page-tab { padding:12px 30px; cursor:pointer; font-size:0.85rem; font-weight:700;
+    color:#1565c0; border-bottom:3px solid transparent; transition:all 0.2s; text-transform:uppercase; }
+  .page-tab.active { color:#0d3b6e; border-bottom-color:#1565c0; background:#f0f4f8; }
+  .page-tab:hover { background:#e3f2fd; }
+
+  /* MESES */
+  .months-bar { background:#fff; display:flex; justify-content:center; gap:6px;
+    padding:10px 20px; flex-wrap:wrap; border-bottom:1px solid #ddd; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  .month-btn { background:#e3f2fd; border:1px solid #1565c0; color:#1565c0;
+    padding:6px 14px; border-radius:20px; cursor:pointer; font-size:0.78rem;
+    font-weight:700; text-transform:uppercase; transition:all 0.2s; }
+  .month-btn:hover { background:#1565c0; color:#fff; }
+  .month-btn.active { background:#1565c0; color:#fff; }
+  .month-btn.sin-datos { background:#f5f5f5; border-color:#ccc; color:#aaa; cursor:default; }
+  .month-btn.sin-datos:hover { background:#f5f5f5; color:#aaa; }
+
+  /* PÁGINAS */
+  .page { display:none; padding:16px; }
+  .page.active { display:block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Objetivos y Metas de la Calidad e Inocuidad - Almacén</h1>
+  <h2 id="page-subtitle">ALMACÉN MP</h2>
+</div>
+
+<div class="page-tabs">
+  <div class="page-tab active" onclick="switchPage('mp', this)">ALM MP</div>
+  <div class="page-tab" onclick="switchPage('pt', this)">ALM PT</div>
+</div>
+
+<div class="months-bar">
+  <button class="month-btn active" onclick="selectMonth('todos', this)">TODOS</button>
+  <button class="month-btn" id="btn-enero" onclick="selectMonth('enero', this)">ENE</button>
+  <button class="month-btn" id="btn-febrero" onclick="selectMonth('febrero', this)">FEB</button>
+  <button class="month-btn" id="btn-marzo" onclick="selectMonth('marzo', this)">MAR</button>
+  <button class="month-btn" id="btn-abril" onclick="selectMonth('abril', this)">ABR</button>
+  <button class="month-btn" id="btn-mayo" onclick="selectMonth('mayo', this)">MAY</button>
+  <button class="month-btn" id="btn-junio" onclick="selectMonth('junio', this)">JUN</button>
+  <button class="month-btn" id="btn-julio" onclick="selectMonth('julio', this)">JUL</button>
+  <button class="month-btn" id="btn-agosto" onclick="selectMonth('agosto', this)">AGO</button>
+  <button class="month-btn" id="btn-septiembre" onclick="selectMonth('septiembre', this)">SEP</button>
+  <button class="month-btn" id="btn-octubre" onclick="selectMonth('octubre', this)">OCT</button>
+  <button class="month-btn" id="btn-noviembre" onclick="selectMonth('noviembre', this)">NOV</button>
+  <button class="month-btn" id="btn-diciembre" onclick="selectMonth('diciembre', this)">DIC</button>
+</div>
+
+<div class="page active" id="page-mp">
+  <!-- Aquí irán los gráficos de ALM MP -->
+  <p style="color:#666; padding:20px; text-align:center;">Gráficos ALM MP — los iremos agregando</p>
+</div>
+
+<div class="page" id="page-pt">
+  <!-- Aquí irán los gráficos de ALM PT -->
+  <p style="color:#666; padding:20px; text-align:center;">Gráficos ALM PT — los iremos agregando</p>
+</div>
+
+<script>
+// ID de tu Google Sheets
+const SHEET_ID = "2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8";
+
+// URLs de cada hoja
+const URLS = {
+  resina:     `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=827468316&single=true&output=csv`,
+  mp_alm:     `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=51391618&single=true&output=csv`,
+  mp_prod:    `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=117960059&single=true&output=csv`,
+  stock_seg:  `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1114764844&single=true&output=csv`,
+  producto:   `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1236938962&single=true&output=csv`,
+  despachos:  `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1044466995&single=true&output=csv`
+};
+
+// Aquí guardaremos todos los datos
+let RAW = {};
+let currentMes = "todos";
+
+// Función para leer un CSV desde Google Sheets
+async function fetchCSV(url) {
+  const res = await fetch(url);
+  const text = await res.text();
+  const rows = text.trim().split("\n").map(r => r.split(","));
+  const headers = rows[0].map(h => h.trim().replace(/"/g,""));
+  return rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = (row[i]||"").trim().replace(/"/g,""));
+    return obj;
+  });
+}
+
+// Cargar todos los datos al abrir el dashboard
+async function cargarDatos() {
+  document.body.innerHTML = `<div style="text-align:center;padding:100px;font-size:1.2rem;color:#1565c0;">⏳ Cargando datos...</div>`;
+  
+  try {
+    const [resina, mp_alm, mp_prod, stock_seg, producto, despachos] = await Promise.all([
+      fetchCSV(URLS.resina),
+      fetchCSV(URLS.mp_alm),
+      fetchCSV(URLS.mp_prod),
+      fetchCSV(URLS.stock_seg),
+      fetchCSV(URLS.producto),
+      fetchCSV(URLS.despachos)
+    ]);
+
+    RAW = { resina, mp_alm, mp_prod, stock_seg, producto, despachos };
+    console.log("✅ Datos cargados:", {
+      resina: resina.length,
+      mp_alm: mp_alm.length,
+      mp_prod: mp_prod.length,
+      despachos: despachos.length
+    });
+    
+    // Reconstruir el HTML
+    location.reload(); // temporal — luego lo cambiamos
+
+  } catch(e) {
+    document.body.innerHTML = `<div style="text-align:center;padding:100px;color:red;">❌ Error cargando datos: ${e.message}</div>`;
+  }
+}
+
+// Funciones de navegación
+function switchPage(page, tab) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".page-tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("page-" + page).classList.add("active");
+  tab.classList.add("active");
+  document.getElementById("page-subtitle").textContent = page === "mp" ? "ALMACÉN MP" : "ALMACÉN PT";
+}
+
+function selectMonth(mes, btn) {
+  if (btn.classList.contains("sin-datos")) return;
+  currentMes = mes;
+  document.querySelectorAll(".month-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+// Iniciar
+cargarDatos();
+</script>
+</body>
+</html>
