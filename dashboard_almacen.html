@@ -8,7 +8,6 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background:#f0f4f8; color:#1a1a2e; }
 
-  /* HEADER */
   .header {
     background: linear-gradient(135deg, #0d3b6e, #1565c0);
     text-align:center; padding: 14px 20px;
@@ -17,14 +16,12 @@
   .header h1 { font-size:1.3rem; font-weight:700; color:#fff; text-transform:uppercase; }
   .header h2 { font-size:0.95rem; color:#bbdefb; margin-top:4px; }
 
-  /* PESTAÑAS */
   .page-tabs { display:flex; background:#fff; border-bottom:2px solid #1565c0; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
   .page-tab { padding:12px 30px; cursor:pointer; font-size:0.85rem; font-weight:700;
     color:#1565c0; border-bottom:3px solid transparent; transition:all 0.2s; text-transform:uppercase; }
   .page-tab.active { color:#0d3b6e; border-bottom-color:#1565c0; background:#f0f4f8; }
   .page-tab:hover { background:#e3f2fd; }
 
-  /* MESES */
   .months-bar { background:#fff; display:flex; justify-content:center; gap:6px;
     padding:10px 20px; flex-wrap:wrap; border-bottom:1px solid #ddd; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
   .month-btn { background:#e3f2fd; border:1px solid #1565c0; color:#1565c0;
@@ -35,84 +32,71 @@
   .month-btn.sin-datos { background:#f5f5f5; border-color:#ccc; color:#aaa; cursor:default; }
   .month-btn.sin-datos:hover { background:#f5f5f5; color:#aaa; }
 
-  /* PÁGINAS */
   .page { display:none; padding:16px; }
   .page.active { display:block; }
+
+  .card {
+    background:#fff;
+    border-radius:10px;
+    padding:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  .card-title {
+    font-size:0.85rem;
+    font-weight:700;
+    margin-bottom:10px;
+    color:#1565c0;
+    text-transform:uppercase;
+  }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>Objetivos y Metas de la Calidad e Inocuidad - Almacén</h1>
-  <h2 id="page-subtitle">ALMACÉN MP</h2>
-</div>
-
-<div class="page-tabs">
-  <div class="page-tab active" onclick="switchPage('mp', this)">ALM MP</div>
-  <div class="page-tab" onclick="switchPage('pt', this)">ALM PT</div>
-</div>
-
-<div class="months-bar">
-  <button class="month-btn active" onclick="selectMonth('todos', this)">TODOS</button>
-  <button class="month-btn" id="btn-enero" onclick="selectMonth('enero', this)">ENE</button>
-  <button class="month-btn" id="btn-febrero" onclick="selectMonth('febrero', this)">FEB</button>
-  <button class="month-btn" id="btn-marzo" onclick="selectMonth('marzo', this)">MAR</button>
-  <button class="month-btn" id="btn-abril" onclick="selectMonth('abril', this)">ABR</button>
-  <button class="month-btn" id="btn-mayo" onclick="selectMonth('mayo', this)">MAY</button>
-  <button class="month-btn" id="btn-junio" onclick="selectMonth('junio', this)">JUN</button>
-  <button class="month-btn" id="btn-julio" onclick="selectMonth('julio', this)">JUL</button>
-  <button class="month-btn" id="btn-agosto" onclick="selectMonth('agosto', this)">AGO</button>
-  <button class="month-btn" id="btn-septiembre" onclick="selectMonth('septiembre', this)">SEP</button>
-  <button class="month-btn" id="btn-octubre" onclick="selectMonth('octubre', this)">OCT</button>
-  <button class="month-btn" id="btn-noviembre" onclick="selectMonth('noviembre', this)">NOV</button>
-  <button class="month-btn" id="btn-diciembre" onclick="selectMonth('diciembre', this)">DIC</button>
-</div>
-
-<div class="page active" id="page-mp">
-  <!-- Aquí irán los gráficos de ALM MP -->
-  <p style="color:#666; padding:20px; text-align:center;">Gráficos ALM MP — los iremos agregando</p>
-</div>
-
-<div class="page" id="page-pt">
-  <!-- Aquí irán los gráficos de ALM PT -->
-  <p style="color:#666; padding:20px; text-align:center;">Gráficos ALM PT — los iremos agregando</p>
-</div>
-
 <script>
-// ID de tu Google Sheets
-const SHEET_ID = "2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8";
-
-// URLs de cada hoja
+// ===== CONFIGURACIÓN =====
 const URLS = {
-  resina:     `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=827468316&single=true&output=csv`,
-  mp_alm:     `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=51391618&single=true&output=csv`,
-  mp_prod:    `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=117960059&single=true&output=csv`,
-  stock_seg:  `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1114764844&single=true&output=csv`,
-  producto:   `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1236938962&single=true&output=csv`,
-  despachos:  `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1044466995&single=true&output=csv`
+  resina:    `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=827468316&single=true&output=csv`,
+  mp_alm:    `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=51391618&single=true&output=csv`,
+  mp_prod:   `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=117960059&single=true&output=csv`,
+  stock_seg: `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1114764844&single=true&output=csv`,
+  producto:  `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1236938962&single=true&output=csv`,
+  despachos: `https://docs.google.com/spreadsheets/d/e/2PACX-1vQuJX1L85DXokPgEdg1GidRpB6-A188_r6HDmJltcS-l7CLFoRhhUw_g5IHy5I70qR7MiBcKV1fYvo8/pub?gid=1044466995&single=true&output=csv`
 };
 
-// Aquí guardaremos todos los datos
 let RAW = {};
 let currentMes = "todos";
 
-// Función para leer un CSV desde Google Sheets
+// ===== UTILIDADES =====
 async function fetchCSV(url) {
   const res = await fetch(url);
   const text = await res.text();
   const rows = text.trim().split("\n").map(r => r.split(","));
-  const headers = rows[0].map(h => h.trim().replace(/"/g,""));
+  const headers = rows[0].map(h => h.trim().replace(/"/g, ""));
   return rows.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h,i) => obj[h] = (row[i]||"").trim().replace(/"/g,""));
+    headers.forEach((h, i) => obj[h] = (row[i] || "").trim().replace(/"/g, ""));
     return obj;
   });
 }
 
-// Cargar todos los datos al abrir el dashboard
+function getMes(fechaStr) {
+  if (!fechaStr) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio",
+                 "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const partes = fechaStr.split("/");
+  const mes = parseInt(partes[1]) - 1;
+  return meses[mes] || "";
+}
+
+function filtrar(arr, campoFecha = "FECHA") {
+  if (currentMes === "todos") return arr;
+  return arr.filter(r => getMes(r[campoFecha]) === currentMes);
+}
+
+// ===== CARGA DE DATOS =====
 async function cargarDatos() {
   document.body.innerHTML = `<div style="text-align:center;padding:100px;font-size:1.2rem;color:#1565c0;">⏳ Cargando datos...</div>`;
-  
   try {
     const [resina, mp_alm, mp_prod, stock_seg, producto, despachos] = await Promise.all([
       fetchCSV(URLS.resina),
@@ -122,30 +106,22 @@ async function cargarDatos() {
       fetchCSV(URLS.producto),
       fetchCSV(URLS.despachos)
     ]);
-
     RAW = { resina, mp_alm, mp_prod, stock_seg, producto, despachos };
-    console.log("✅ Datos cargados:", {
-      resina: resina.length,
-      mp_alm: mp_alm.length,
-      mp_prod: mp_prod.length,
-      despachos: despachos.length
-    });
-    
-    // Reconstruir el HTML
-  iniciarDashboard();
-
+    iniciarDashboard();
   } catch(e) {
     document.body.innerHTML = `<div style="text-align:center;padding:100px;color:red;">❌ Error cargando datos: ${e.message}</div>`;
   }
 }
 
-// Funciones de navegación
+// ===== NAVEGACIÓN =====
 function switchPage(page, tab) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.querySelectorAll(".page-tab").forEach(t => t.classList.remove("active"));
   document.getElementById("page-" + page).classList.add("active");
   tab.classList.add("active");
   document.getElementById("page-subtitle").textContent = page === "mp" ? "ALMACÉN MP" : "ALMACÉN PT";
+  // ✅ FIX: setTimeout para que el canvas sea visible antes de que Chart.js lo dibuje
+  setTimeout(() => updateAll(), 50);
 }
 
 function selectMonth(mes, btn) {
@@ -156,23 +132,6 @@ function selectMonth(mes, btn) {
   updateAll();
 }
 
-// Iniciar
-cargarDatos();
-// ===== UTILIDADES =====
-function getMes(fechaStr) {
-  if (!fechaStr) return "";
-  const meses = ["enero","febrero","marzo","abril","mayo","junio",
-                 "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  const partes = fechaStr.split("/");
-  const mes = parseInt(partes[1]) - 1;
-  return meses[mes] || "";
-}
-
-function filtrar(arr, campoFecha="FECHA") {
-  if (currentMes === "todos") return arr;
-  return arr.filter(r => getMes(r[campoFecha]) === currentMes);
-}
-
 // ===== INICIAR DASHBOARD =====
 function iniciarDashboard() {
   document.body.innerHTML = `
@@ -180,116 +139,138 @@ function iniciarDashboard() {
       <h1>Objetivos y Metas de la Calidad e Inocuidad - Almacén</h1>
       <h2 id="page-subtitle">ALMACÉN MP</h2>
     </div>
+
     <div class="page-tabs">
       <div class="page-tab active" onclick="switchPage('mp', this)">ALM MP</div>
       <div class="page-tab" onclick="switchPage('pt', this)">ALM PT</div>
     </div>
+
     <div class="months-bar">
       <button class="month-btn active" onclick="selectMonth('todos', this)">TODOS</button>
-      <button class="month-btn" id="btn-enero" onclick="selectMonth('enero', this)">ENE</button>
-      <button class="month-btn" id="btn-febrero" onclick="selectMonth('febrero', this)">FEB</button>
-      <button class="month-btn" id="btn-marzo" onclick="selectMonth('marzo', this)">MAR</button>
-      <button class="month-btn" id="btn-abril" onclick="selectMonth('abril', this)">ABR</button>
-      <button class="month-btn" id="btn-mayo" onclick="selectMonth('mayo', this)">MAY</button>
-      <button class="month-btn" id="btn-junio" onclick="selectMonth('junio', this)">JUN</button>
-      <button class="month-btn" id="btn-julio" onclick="selectMonth('julio', this)">JUL</button>
-      <button class="month-btn" id="btn-agosto" onclick="selectMonth('agosto', this)">AGO</button>
+      <button class="month-btn" id="btn-enero"      onclick="selectMonth('enero', this)">ENE</button>
+      <button class="month-btn" id="btn-febrero"    onclick="selectMonth('febrero', this)">FEB</button>
+      <button class="month-btn" id="btn-marzo"      onclick="selectMonth('marzo', this)">MAR</button>
+      <button class="month-btn" id="btn-abril"      onclick="selectMonth('abril', this)">ABR</button>
+      <button class="month-btn" id="btn-mayo"       onclick="selectMonth('mayo', this)">MAY</button>
+      <button class="month-btn" id="btn-junio"      onclick="selectMonth('junio', this)">JUN</button>
+      <button class="month-btn" id="btn-julio"      onclick="selectMonth('julio', this)">JUL</button>
+      <button class="month-btn" id="btn-agosto"     onclick="selectMonth('agosto', this)">AGO</button>
       <button class="month-btn" id="btn-septiembre" onclick="selectMonth('septiembre', this)">SEP</button>
-      <button class="month-btn" id="btn-octubre" onclick="selectMonth('octubre', this)">OCT</button>
-      <button class="month-btn" id="btn-noviembre" onclick="selectMonth('noviembre', this)">NOV</button>
-      <button class="month-btn" id="btn-diciembre" onclick="selectMonth('diciembre', this)">DIC</button>
-    </div>
-<div class="page active" id="page-mp">
-  <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; margin-bottom:12px;">
-    
-    <div class="card">
-      <div class="card-title">Resina Almacén</div>
-      <div style="position:relative; height:220px;">
-        <canvas id="ch-resina"></canvas>
-      </div>
+      <button class="month-btn" id="btn-octubre"    onclick="selectMonth('octubre', this)">OCT</button>
+      <button class="month-btn" id="btn-noviembre"  onclick="selectMonth('noviembre', this)">NOV</button>
+      <button class="month-btn" id="btn-diciembre"  onclick="selectMonth('diciembre', this)">DIC</button>
     </div>
 
-    <div class="card">
-      <div class="card-title">Stock de Resina por Cliente</div>
-      <div style="position:relative; height:220px;">
-        <canvas id="ch-resina-cliente"></canvas>
-      </div>
-    </div>
+    <!-- ====== PÁGINA ALM MP ====== -->
+    <div class="page active" id="page-mp">
 
-    <div class="card">
-      <div class="card-title">Stock de Material en Almacén</div>
-      <div style="position:relative; height:220px;">
-        <canvas id="ch-stock-mat"></canvas>
-      </div>
-    </div>
-  </div>
+      <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; margin-bottom:12px;">
 
-  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div class="card">
+          <div class="card-title">Resina Almacén</div>
+          <div style="position:relative; height:220px;">
+            <canvas id="ch-resina"></canvas>
+          </div>
+        </div>
 
-    <div class="card">
-      <div class="card-title">Resina Entregada a Producción</div>
-      <div style="position:relative; height:220px;">
-        <canvas id="ch-resina-prod"></canvas>
-      </div>
-    </div>
+        <div class="card">
+          <div class="card-title">Stock de Resina por Cliente</div>
+          <div style="position:relative; height:220px;">
+            <canvas id="ch-resina-cliente"></canvas>
+          </div>
+        </div>
 
-    <div class="card">
-      <div class="card-title">Material Entregado a Producción</div>
-      <div style="position:relative; height:220px;">
-        <canvas id="ch-mat-prod"></canvas>
-      </div>
-    </div>
+        <div class="card">
+          <div class="card-title">Stock de Material en Almacén</div>
+          <div style="position:relative; height:220px;">
+            <canvas id="ch-stock-mat"></canvas>
+          </div>
+        </div>
 
-    <div class="card">
-    <div class="card-title">Pedidos MP</div>
-    <div style="position:relative; height:220px;">
-      <canvas id="ch-pedidos"></canvas>
-    </div>
+      </div>
 
-    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
-      <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
-        <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
-        <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-total">—</div>
-      </div>
-      <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
-        <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMBOL</div>
-        <div style="font-size:1.2rem; font-weight:700; color:#4caf50;" id="kpi-embol">—</div>
-      </div>
-      <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
-        <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMPACAR</div>
-        <div style="font-size:1.2rem; font-weight:700; color:#ff9800;" id="kpi-empacar">—</div>
-      </div>
-    </div>
-  </div>
-</div>
-<div style="margin-bottom:12px; width:100%;">
-  <div class="card">
-    <div class="card-title">Stock de Seguridad y Punto de Reorden</div>
-    <div style="overflow-x:auto;">
-      <table id="tabla-stock-seg" style="width:100%; border-collapse:collapse; font-size:0.82rem;">
-        <thead>
-          <tr style="background:#1565c0; color:#fff;">
-            <th style="padding:8px 12px; text-align:left;">Material</th>
-            <th style="padding:8px 12px; text-align:center;">Cint. Externo</th>
-            <th style="padding:8px 12px; text-align:center;">Cint. Interno</th>
-            <th style="padding:8px 12px; text-align:center;">Tapa Base</th>
-            <th style="padding:8px 12px; text-align:center;">Zuncho</th>
-            <th style="padding:8px 12px; text-align:center;">Bolsa Plástica</th>
-            <th style="padding:8px 12px; text-align:center;">Presinto</th>
-            <th style="padding:8px 12px; text-align:center;">Grampas</th>
-            <th style="padding:8px 12px; text-align:center;">Pallets</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-stock-seg"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
 
-</div>
+        <div class="card">
+          <div class="card-title">Resina Entregada a Producción</div>
+          <div style="position:relative; height:220px;">
+            <canvas id="ch-resina-prod"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Material Entregado a Producción</div>
+          <div style="position:relative; height:220px;">
+            <canvas id="ch-mat-prod"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Pedidos MP</div>
+          <div style="position:relative; height:220px;">
+            <canvas id="ch-pedidos"></canvas>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-total">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMBOL</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#4caf50;" id="kpi-embol">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMPACAR</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#ff9800;" id="kpi-empacar">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="margin-bottom:12px; width:100%;">
+        <div class="card">
+          <div class="card-title">Stock de Seguridad y Punto de Reorden</div>
+          <div style="overflow-x:auto;">
+            <table id="tabla-stock-seg" style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+              <thead>
+                <tr style="background:#1565c0; color:#fff;">
+                  <th style="padding:8px 12px; text-align:left;">Material</th>
+                  <th style="padding:8px 12px; text-align:center;">Cint. Externo</th>
+                  <th style="padding:8px 12px; text-align:center;">Cint. Interno</th>
+                  <th style="padding:8px 12px; text-align:center;">Tapa Base</th>
+                  <th style="padding:8px 12px; text-align:center;">Zuncho</th>
+                  <th style="padding:8px 12px; text-align:center;">Bolsa Plástica</th>
+                  <th style="padding:8px 12px; text-align:center;">Presinto</th>
+                  <th style="padding:8px 12px; text-align:center;">Grampas</th>
+                  <th style="padding:8px 12px; text-align:center;">Pallets</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-stock-seg"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- ====== FIN PÁGINA ALM MP ====== -->
+
+    <!-- ====== PÁGINA ALM PT ====== -->
     <div class="page" id="page-pt">
-      <p style="color:#666; padding:20px; text-align:center;">ALM PT — próximamente</p>
+
+      <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+
+        <div class="card">
+          <div class="card-title">Stock Actual Preformas</div>
+          <div style="position:relative; height:220px;">
+            <canvas id="ch-preformas"></canvas>
+          </div>
+        </div>
+
+      </div>
+
     </div>
+    <!-- ====== FIN PÁGINA ALM PT ====== -->
   `;
 
   // Marcar meses sin datos
@@ -315,16 +296,17 @@ function updateAll() {
     dibujarMatProd();
     dibujarPedidos();
     dibujarStockSeg();
+  } else if (pagina === "page-pt") {
+    dibujarPreformas();
   }
 }
 
-// ===== GRÁFICO 1: RESINA ALMACÉN =====
-let chartResina = null;
+// ===== GRÁFICOS ALM MP =====
 
+let chartResina = null;
 function dibujarResina() {
   const datos = filtrar(RAW.resina, "FECHA");
 
-  // Agrupar por artículo
   const porArticulo = {};
   datos.forEach(r => {
     const art = r["ARTÍCULO"] || "";
@@ -339,7 +321,6 @@ function dibujarResina() {
   const stocks = labels.map(l => porArticulo[l].stock);
   const bigbags = labels.map(l => porArticulo[l].bigbag);
 
-  // Destruir gráfico anterior si existe
   if (chartResina) { chartResina.destroy(); chartResina = null; }
 
   const ctx = document.getElementById("ch-resina").getContext("2d");
@@ -353,56 +334,34 @@ function dibujarResina() {
           data: stocks,
           borderColor: "#1565c0",
           backgroundColor: "rgba(21,101,192,0.12)",
-          fill: true,
-          tension: 0.3,
-          pointRadius: 5,
-          pointBackgroundColor: "#1565c0"
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#1565c0"
         },
         {
           label: "BIG BAG (BOL)",
           data: bigbags,
           borderColor: "#90caf9",
           backgroundColor: "rgba(144,202,249,0.08)",
-          fill: true,
-          tension: 0.3,
-          pointRadius: 5,
-          pointBackgroundColor: "#90caf9",
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#90caf9",
           yAxisID: "y2"
         }
       ]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: "#333", font: { size: 11 } } }
-      },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: "#333", font: { size: 11 } } } },
       scales: {
-        x: {
-          ticks: { color: "#555", maxRotation: 45, font: { size: 9 } },
-          grid: { color: "#f0f0f0" }
-        },
-        y: {
-          ticks: { color: "#555" },
-          grid: { color: "#f0f0f0" },
-          title: { display: true, text: "KG", color: "#555", font: { size: 10 } }
-        },
-        y2: {
-          position: "right",
-          ticks: { color: "#90caf9" },
-          grid: { display: false },
-          title: { display: true, text: "BOL", color: "#90caf9", font: { size: 10 } }
-        }
+        x: { ticks: { color: "#555", maxRotation: 45, font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { ticks: { color: "#555" }, grid: { color: "#f0f0f0" }, title: { display: true, text: "KG", color: "#555", font: { size: 10 } } },
+        y2: { position: "right", ticks: { color: "#90caf9" }, grid: { display: false }, title: { display: true, text: "BOL", color: "#90caf9", font: { size: 10 } } }
       }
     }
   });
 }
-let chartResinaCliente = null;
 
+let chartResinaCliente = null;
 function dibujarResinaCliente() {
   const datos = filtrar(RAW.resina, "FECHA");
 
-  // Agrupar stock por DESTINO (EMBOL / EMPACAR)
   const porDestino = {};
   datos.forEach(r => {
     const destino = r["DESTINO"] || "SIN DESTINO";
@@ -422,39 +381,22 @@ function dibujarResinaCliente() {
     type: "doughnut",
     data: {
       labels,
-      datasets: [{
-        data: valores,
-        backgroundColor: ["#1565c0", "#1a237e", "#42a5f5"],
-        borderColor: "#fff",
-        borderWidth: 3
-      }]
+      datasets: [{ data: valores, backgroundColor: ["#1565c0", "#1a237e", "#42a5f5"], borderColor: "#fff", borderWidth: 3 }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: {
-          position: "right",
-          labels: { color: "#333", font: { size: 11 }, padding: 12 }
-        },
-        tooltip: {
-          callbacks: {
-            label: (c) => {
-              const pct = (c.raw / total * 100).toFixed(1);
-              return ` ${c.label}: ${pct}%`;
-            }
-          }
-        }
+        legend: { position: "right", labels: { color: "#333", font: { size: 11 }, padding: 12 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${(c.raw / total * 100).toFixed(1)}%` } }
       }
     }
   });
 }
-let chartStockMat = null;
 
+let chartStockMat = null;
 function dibujarStockMaterial() {
   const datos = filtrar(RAW.mp_alm, "FECHA");
 
-  // Agrupar por DESCRIPCIÓN
   const porDesc = {};
   datos.forEach(r => {
     const desc = r["DESCRIPCIÓN"] || "";
@@ -463,11 +405,7 @@ function dibujarStockMaterial() {
     porDesc[desc] += stock;
   });
 
-  // Ordenar de mayor a menor y tomar top 10
-  const sorted = Object.entries(porDesc)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10);
-
+  const sorted = Object.entries(porDesc).sort((a, b) => b[1] - a[1]).slice(0, 10);
   const labels = sorted.map(e => e[0].length > 25 ? e[0].substring(0, 25) + "..." : e[0]);
   const valores = sorted.map(e => e[1]);
 
@@ -476,42 +414,23 @@ function dibujarStockMaterial() {
   const ctx = document.getElementById("ch-stock-mat").getContext("2d");
   chartStockMat = new Chart(ctx, {
     type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        data: valores,
-        backgroundColor: "#1565c0",
-        borderRadius: 3
-      }]
-    },
+    data: { labels, datasets: [{ data: valores, backgroundColor: "#1565c0", borderRadius: 3 }] },
     options: {
-      indexAxis: "y",
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
       scales: {
-        x: {
-          ticks: { color: "#555", font: { size: 9 } },
-          grid: { color: "#f0f0f0" }
-        },
-        y: {
-          ticks: { color: "#555", font: { size: 9 } },
-          grid: { display: false }
-        }
+        x: { ticks: { color: "#555", font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { ticks: { color: "#555", font: { size: 9 } }, grid: { display: false } }
       }
     }
   });
 }
-let chartResinaProd = null;
 
+let chartResinaProd = null;
 function dibujarResinaProd() {
-  // Filtrar por mes Y solo items que contengan "RESINA" en DESCRIPCIÓN
   const datos = filtrar(RAW.mp_prod, "FECHA")
     .filter(r => (r["DESCRIPCIÓN"] || "").toUpperCase().includes("RESINA"));
 
-  // Agrupar por DESCRIPCIÓN
   const porDesc = {};
   datos.forEach(r => {
     const desc = r["DESCRIPCIÓN"] || "";
@@ -522,7 +441,6 @@ function dibujarResinaProd() {
     porDesc[desc].bigbag += bigbag;
   });
 
-  // Ordenar de mayor a menor
   const sorted = Object.entries(porDesc).sort((a, b) => b[1].cantidad - a[1].cantidad);
   const labels = sorted.map(e => e[0].length > 20 ? e[0].substring(0, 20) + "..." : e[0]);
   const cantidades = sorted.map(e => e[1].cantidad);
@@ -539,60 +457,35 @@ function dibujarResinaProd() {
         {
           label: "CANTIDAD (KG)",
           data: cantidades,
-          borderColor: "#1565c0",
-          backgroundColor: "rgba(21,101,192,0.12)",
-          fill: true,
-          tension: 0.3,
-          pointRadius: 5,
-          pointBackgroundColor: "#1565c0"
+          borderColor: "#1565c0", backgroundColor: "rgba(21,101,192,0.12)",
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#1565c0"
         },
         {
           label: "BIG BAG (BOL)",
           data: bigbags,
-          borderColor: "#90caf9",
-          backgroundColor: "rgba(144,202,249,0.08)",
-          fill: true,
-          tension: 0.3,
-          pointRadius: 5,
-          pointBackgroundColor: "#90caf9",
+          borderColor: "#90caf9", backgroundColor: "rgba(144,202,249,0.08)",
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#90caf9",
           yAxisID: "y2"
         }
       ]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: "#333", font: { size: 11 } } }
-      },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: "#333", font: { size: 11 } } } },
       scales: {
-        x: {
-          ticks: { color: "#555", maxRotation: 45, font: { size: 9 } },
-          grid: { color: "#f0f0f0" }
-        },
-        y: {
-          ticks: { color: "#555" },
-          grid: { color: "#f0f0f0" },
-          title: { display: true, text: "KG", color: "#555", font: { size: 10 } }
-        },
-        y2: {
-          position: "right",
-          ticks: { color: "#90caf9" },
-          grid: { display: false },
-          title: { display: true, text: "BOL", color: "#90caf9", font: { size: 10 } }
-        }
+        x: { ticks: { color: "#555", maxRotation: 45, font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { ticks: { color: "#555" }, grid: { color: "#f0f0f0" }, title: { display: true, text: "KG", color: "#555", font: { size: 10 } } },
+        y2: { position: "right", ticks: { color: "#90caf9" }, grid: { display: false }, title: { display: true, text: "BOL", color: "#90caf9", font: { size: 10 } } }
       }
     }
   });
 }
-let chartMatProd = null;
 
+let chartMatProd = null;
 function dibujarMatProd() {
-  // Filtrar por mes y EXCLUIR resinas
   const datos = filtrar(RAW.mp_prod, "FECHA")
     .filter(r => !(r["DESCRIPCIÓN"] || "").toUpperCase().includes("RESINA"));
 
-  // Agrupar por DESCRIPCIÓN
   const porDesc = {};
   datos.forEach(r => {
     const desc = r["DESCRIPCIÓN"] || "";
@@ -601,11 +494,7 @@ function dibujarMatProd() {
     porDesc[desc] += cantidad;
   });
 
-  // Ordenar de mayor a menor, top 10
-  const sorted = Object.entries(porDesc)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10);
-
+  const sorted = Object.entries(porDesc).sort((a, b) => b[1] - a[1]).slice(0, 10);
   const labels = sorted.map(e => e[0].length > 22 ? e[0].substring(0, 22) + "..." : e[0]);
   const valores = sorted.map(e => e[1]);
 
@@ -614,49 +503,30 @@ function dibujarMatProd() {
   const ctx = document.getElementById("ch-mat-prod").getContext("2d");
   chartMatProd = new Chart(ctx, {
     type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        data: valores,
-        backgroundColor: "#1565c0",
-        borderRadius: 3
-      }]
-    },
+    data: { labels, datasets: [{ data: valores, backgroundColor: "#1565c0", borderRadius: 3 }] },
     options: {
-      indexAxis: "y",
-      responsive: true,
-      maintainAspectRatio: false,
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: {
-          ticks: { color: "#555", font: { size: 9 } },
-          grid: { color: "#f0f0f0" }
-        },
-        y: {
-          ticks: { color: "#555", font: { size: 9 } },
-          grid: { display: false }
-        }
+        x: { ticks: { color: "#555", font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { ticks: { color: "#555", font: { size: 9 } }, grid: { display: false } }
       }
     }
   });
 }
-let chartPedidos = null;
 
+let chartPedidos = null;
 function dibujarPedidos() {
   const datos = filtrar(RAW.mp_prod, "FECHA");
 
-  // Contar pedidos ÚNICOS por producto
   const pedidosEmbol = new Set(
     datos.filter(r => r["PRODUCTO"] === "EMBOL").map(r => r["N° PEDIDO"])
   ).size;
-
   const pedidosEmpacar = new Set(
     datos.filter(r => r["PRODUCTO"] === "EMPACAR").map(r => r["N° PEDIDO"])
   ).size;
-
   const total = pedidosEmbol + pedidosEmpacar;
 
-  // Actualizar KPIs
   document.getElementById("kpi-total").textContent = total;
   document.getElementById("kpi-embol").textContent = pedidosEmbol;
   document.getElementById("kpi-empacar").textContent = pedidosEmpacar;
@@ -668,34 +538,17 @@ function dibujarPedidos() {
     type: "doughnut",
     data: {
       labels: ["EMPACAR", "EMBOL"],
-      datasets: [{
-        data: [pedidosEmpacar, pedidosEmbol],
-        backgroundColor: ["#1565c0", "#1a237e"],
-        borderColor: "#fff",
-        borderWidth: 3
-      }]
+      datasets: [{ data: [pedidosEmpacar, pedidosEmbol], backgroundColor: ["#1565c0", "#1a237e"], borderColor: "#fff", borderWidth: 3 }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: {
-          position: "bottom",
-          labels: { color: "#333", font: { size: 10 }, padding: 10 }
-        },
-        tooltip: {
-          callbacks: {
-            label: (c) => {
-              const pct = (c.raw / total * 100).toFixed(1);
-              return ` ${c.label}: ${c.raw} (${pct}%)`;
-            }
-          }
-        }
+        legend: { position: "bottom", labels: { color: "#333", font: { size: 10 }, padding: 10 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} (${(c.raw / total * 100).toFixed(1)}%)` } }
       }
     }
   });
 }
-let chartStockSeg = null;
 
 function dibujarStockSeg() {
   const datos = RAW.stock_seg;
@@ -710,8 +563,7 @@ function dibujarStockSeg() {
 
   const materiales = ["CINT EXTERNO","CINT. INTERNO","TAPA BASE","ZUNCHO",
                       "BOLSA PLASTICA","PRESINTO","GRAMPAS","PALLETS"];
-
-  const valoresStock = materiales.map(m => Math.round(parseFloat(filaStock?.[m]) || 0));
+  const valoresStock   = materiales.map(m => Math.round(parseFloat(filaStock?.[m])   || 0));
   const valoresReorden = materiales.map(m => Math.round(parseFloat(filaReorden?.[m]) || 0));
 
   const tbody = document.getElementById("tbody-stock-seg");
@@ -726,6 +578,46 @@ function dibujarStockSeg() {
     </tr>
   `;
 }
+
+// ===== GRÁFICOS ALM PT =====
+let chartPreformas = null;
+function dibujarPreformas() {
+  const datos = filtrar(RAW.producto, "FECHA")
+  
+  const porProducto = {};
+  datos.forEach(r => {
+    const producto = r["PRODUCTO"] || "SIN PRODUCTO";
+    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
+    if (!porProducto[producto]) porProducto[producto] = 0;
+    porProducto[producto] += stock;
+  });
+
+  const labels = Object.keys(porProducto);
+  const valores = labels.map(l => porProducto[l]);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  if (chartPreformas) { chartPreformas.destroy(); chartPreformas = null; }
+
+  const ctx = document.getElementById("ch-preformas").getContext("2d");
+  chartPreformas = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ data: valores, backgroundColor: ["#1565c0", "#1a237e", "#42a5f5"], borderColor: "#fff", borderWidth: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: "#333", font: { size: 11 }, padding: 12 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${(c.raw / total * 100).toFixed(1)}%` } }
+      }
+    }
+  });
+}
+
+
+// ===== ARRANCAR =====
+cargarDatos();
 </script>
 </body>
 </html>
