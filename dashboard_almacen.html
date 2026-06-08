@@ -132,7 +132,7 @@ async function cargarDatos() {
     });
     
     // Reconstruir el HTML
-    location.reload(); // temporal — luego lo cambiamos
+  iniciarDashboard();
 
   } catch(e) {
     document.body.innerHTML = `<div style="text-align:center;padding:100px;color:red;">❌ Error cargando datos: ${e.message}</div>`;
@@ -153,10 +153,579 @@ function selectMonth(mes, btn) {
   currentMes = mes;
   document.querySelectorAll(".month-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
+  updateAll();
 }
 
 // Iniciar
 cargarDatos();
+// ===== UTILIDADES =====
+function getMes(fechaStr) {
+  if (!fechaStr) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio",
+                 "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const partes = fechaStr.split("/");
+  const mes = parseInt(partes[1]) - 1;
+  return meses[mes] || "";
+}
+
+function filtrar(arr, campoFecha="FECHA") {
+  if (currentMes === "todos") return arr;
+  return arr.filter(r => getMes(r[campoFecha]) === currentMes);
+}
+
+// ===== INICIAR DASHBOARD =====
+function iniciarDashboard() {
+  document.body.innerHTML = `
+    <div class="header">
+      <h1>Objetivos y Metas de la Calidad e Inocuidad - Almacén</h1>
+      <h2 id="page-subtitle">ALMACÉN MP</h2>
+    </div>
+    <div class="page-tabs">
+      <div class="page-tab active" onclick="switchPage('mp', this)">ALM MP</div>
+      <div class="page-tab" onclick="switchPage('pt', this)">ALM PT</div>
+    </div>
+    <div class="months-bar">
+      <button class="month-btn active" onclick="selectMonth('todos', this)">TODOS</button>
+      <button class="month-btn" id="btn-enero" onclick="selectMonth('enero', this)">ENE</button>
+      <button class="month-btn" id="btn-febrero" onclick="selectMonth('febrero', this)">FEB</button>
+      <button class="month-btn" id="btn-marzo" onclick="selectMonth('marzo', this)">MAR</button>
+      <button class="month-btn" id="btn-abril" onclick="selectMonth('abril', this)">ABR</button>
+      <button class="month-btn" id="btn-mayo" onclick="selectMonth('mayo', this)">MAY</button>
+      <button class="month-btn" id="btn-junio" onclick="selectMonth('junio', this)">JUN</button>
+      <button class="month-btn" id="btn-julio" onclick="selectMonth('julio', this)">JUL</button>
+      <button class="month-btn" id="btn-agosto" onclick="selectMonth('agosto', this)">AGO</button>
+      <button class="month-btn" id="btn-septiembre" onclick="selectMonth('septiembre', this)">SEP</button>
+      <button class="month-btn" id="btn-octubre" onclick="selectMonth('octubre', this)">OCT</button>
+      <button class="month-btn" id="btn-noviembre" onclick="selectMonth('noviembre', this)">NOV</button>
+      <button class="month-btn" id="btn-diciembre" onclick="selectMonth('diciembre', this)">DIC</button>
+    </div>
+<div class="page active" id="page-mp">
+  <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+    
+    <div class="card">
+      <div class="card-title">Resina Almacén</div>
+      <div style="position:relative; height:220px;">
+        <canvas id="ch-resina"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Stock de Resina por Cliente</div>
+      <div style="position:relative; height:220px;">
+        <canvas id="ch-resina-cliente"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Stock de Material en Almacén</div>
+      <div style="position:relative; height:220px;">
+        <canvas id="ch-stock-mat"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+
+    <div class="card">
+      <div class="card-title">Resina Entregada a Producción</div>
+      <div style="position:relative; height:220px;">
+        <canvas id="ch-resina-prod"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Material Entregado a Producción</div>
+      <div style="position:relative; height:220px;">
+        <canvas id="ch-mat-prod"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+    <div class="card-title">Pedidos MP</div>
+    <div style="position:relative; height:220px;">
+      <canvas id="ch-pedidos"></canvas>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+      <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+        <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+        <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-total">—</div>
+      </div>
+      <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+        <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMBOL</div>
+        <div style="font-size:1.2rem; font-weight:700; color:#4caf50;" id="kpi-embol">—</div>
+      </div>
+      <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+        <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMPACAR</div>
+        <div style="font-size:1.2rem; font-weight:700; color:#ff9800;" id="kpi-empacar">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div style="margin-bottom:12px; width:100%;">
+  <div class="card">
+    <div class="card-title">Stock de Seguridad y Punto de Reorden</div>
+    <div style="overflow-x:auto;">
+      <table id="tabla-stock-seg" style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+        <thead>
+          <tr style="background:#1565c0; color:#fff;">
+            <th style="padding:8px 12px; text-align:left;">Material</th>
+            <th style="padding:8px 12px; text-align:center;">Cint. Externo</th>
+            <th style="padding:8px 12px; text-align:center;">Cint. Interno</th>
+            <th style="padding:8px 12px; text-align:center;">Tapa Base</th>
+            <th style="padding:8px 12px; text-align:center;">Zuncho</th>
+            <th style="padding:8px 12px; text-align:center;">Bolsa Plástica</th>
+            <th style="padding:8px 12px; text-align:center;">Presinto</th>
+            <th style="padding:8px 12px; text-align:center;">Grampas</th>
+            <th style="padding:8px 12px; text-align:center;">Pallets</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-stock-seg"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+    <div class="page" id="page-pt">
+      <p style="color:#666; padding:20px; text-align:center;">ALM PT — próximamente</p>
+    </div>
+  `;
+
+  // Marcar meses sin datos
+  const mesesConDatos = [...new Set(RAW.resina.map(r => getMes(r.FECHA)).filter(Boolean))];
+  const todosMeses = ["enero","febrero","marzo","abril","mayo","junio",
+                      "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  todosMeses.forEach(m => {
+    const btn = document.getElementById("btn-" + m);
+    if (btn && !mesesConDatos.includes(m)) btn.classList.add("sin-datos");
+  });
+
+  updateAll();
+}
+
+// ===== ACTUALIZAR TODO =====
+function updateAll() {
+  const pagina = document.querySelector(".page.active")?.id;
+  if (pagina === "page-mp") {
+    dibujarResina();
+    dibujarResinaCliente();
+    dibujarStockMaterial();
+    dibujarResinaProd();
+    dibujarMatProd();
+    dibujarPedidos();
+    dibujarStockSeg();
+  }
+}
+
+// ===== GRÁFICO 1: RESINA ALMACÉN =====
+let chartResina = null;
+
+function dibujarResina() {
+  const datos = filtrar(RAW.resina, "FECHA");
+
+  // Agrupar por artículo
+  const porArticulo = {};
+  datos.forEach(r => {
+    const art = r["ARTÍCULO"] || "";
+    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
+    const bigbag = parseFloat(r["BIG BAG"]) || 0;
+    if (!porArticulo[art]) porArticulo[art] = { stock: 0, bigbag: 0 };
+    porArticulo[art].stock += stock;
+    porArticulo[art].bigbag += bigbag;
+  });
+
+  const labels = Object.keys(porArticulo);
+  const stocks = labels.map(l => porArticulo[l].stock);
+  const bigbags = labels.map(l => porArticulo[l].bigbag);
+
+  // Destruir gráfico anterior si existe
+  if (chartResina) { chartResina.destroy(); chartResina = null; }
+
+  const ctx = document.getElementById("ch-resina").getContext("2d");
+  chartResina = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "STOCK ACTUAL (KG)",
+          data: stocks,
+          borderColor: "#1565c0",
+          backgroundColor: "rgba(21,101,192,0.12)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: "#1565c0"
+        },
+        {
+          label: "BIG BAG (BOL)",
+          data: bigbags,
+          borderColor: "#90caf9",
+          backgroundColor: "rgba(144,202,249,0.08)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: "#90caf9",
+          yAxisID: "y2"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: "#333", font: { size: 11 } } }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#555", maxRotation: 45, font: { size: 9 } },
+          grid: { color: "#f0f0f0" }
+        },
+        y: {
+          ticks: { color: "#555" },
+          grid: { color: "#f0f0f0" },
+          title: { display: true, text: "KG", color: "#555", font: { size: 10 } }
+        },
+        y2: {
+          position: "right",
+          ticks: { color: "#90caf9" },
+          grid: { display: false },
+          title: { display: true, text: "BOL", color: "#90caf9", font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+let chartResinaCliente = null;
+
+function dibujarResinaCliente() {
+  const datos = filtrar(RAW.resina, "FECHA");
+
+  // Agrupar stock por DESTINO (EMBOL / EMPACAR)
+  const porDestino = {};
+  datos.forEach(r => {
+    const destino = r["DESTINO"] || "SIN DESTINO";
+    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
+    if (!porDestino[destino]) porDestino[destino] = 0;
+    porDestino[destino] += stock;
+  });
+
+  const labels = Object.keys(porDestino);
+  const valores = labels.map(l => porDestino[l]);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  if (chartResinaCliente) { chartResinaCliente.destroy(); chartResinaCliente = null; }
+
+  const ctx = document.getElementById("ch-resina-cliente").getContext("2d");
+  chartResinaCliente = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: ["#1565c0", "#1a237e", "#42a5f5"],
+        borderColor: "#fff",
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: { color: "#333", font: { size: 11 }, padding: 12 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (c) => {
+              const pct = (c.raw / total * 100).toFixed(1);
+              return ` ${c.label}: ${pct}%`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+let chartStockMat = null;
+
+function dibujarStockMaterial() {
+  const datos = filtrar(RAW.mp_alm, "FECHA");
+
+  // Agrupar por DESCRIPCIÓN
+  const porDesc = {};
+  datos.forEach(r => {
+    const desc = r["DESCRIPCIÓN"] || "";
+    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
+    if (!porDesc[desc]) porDesc[desc] = 0;
+    porDesc[desc] += stock;
+  });
+
+  // Ordenar de mayor a menor y tomar top 10
+  const sorted = Object.entries(porDesc)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  const labels = sorted.map(e => e[0].length > 25 ? e[0].substring(0, 25) + "..." : e[0]);
+  const valores = sorted.map(e => e[1]);
+
+  if (chartStockMat) { chartStockMat.destroy(); chartStockMat = null; }
+
+  const ctx = document.getElementById("ch-stock-mat").getContext("2d");
+  chartStockMat = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: "#1565c0",
+        borderRadius: 3
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#555", font: { size: 9 } },
+          grid: { color: "#f0f0f0" }
+        },
+        y: {
+          ticks: { color: "#555", font: { size: 9 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+let chartResinaProd = null;
+
+function dibujarResinaProd() {
+  // Filtrar por mes Y solo items que contengan "RESINA" en DESCRIPCIÓN
+  const datos = filtrar(RAW.mp_prod, "FECHA")
+    .filter(r => (r["DESCRIPCIÓN"] || "").toUpperCase().includes("RESINA"));
+
+  // Agrupar por DESCRIPCIÓN
+  const porDesc = {};
+  datos.forEach(r => {
+    const desc = r["DESCRIPCIÓN"] || "";
+    const cantidad = parseFloat(r["CANTIDAD"]) || 0;
+    const bigbag = Math.round(cantidad / 1100);
+    if (!porDesc[desc]) porDesc[desc] = { cantidad: 0, bigbag: 0 };
+    porDesc[desc].cantidad += cantidad;
+    porDesc[desc].bigbag += bigbag;
+  });
+
+  // Ordenar de mayor a menor
+  const sorted = Object.entries(porDesc).sort((a, b) => b[1].cantidad - a[1].cantidad);
+  const labels = sorted.map(e => e[0].length > 20 ? e[0].substring(0, 20) + "..." : e[0]);
+  const cantidades = sorted.map(e => e[1].cantidad);
+  const bigbags = sorted.map(e => e[1].bigbag);
+
+  if (chartResinaProd) { chartResinaProd.destroy(); chartResinaProd = null; }
+
+  const ctx = document.getElementById("ch-resina-prod").getContext("2d");
+  chartResinaProd = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "CANTIDAD (KG)",
+          data: cantidades,
+          borderColor: "#1565c0",
+          backgroundColor: "rgba(21,101,192,0.12)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: "#1565c0"
+        },
+        {
+          label: "BIG BAG (BOL)",
+          data: bigbags,
+          borderColor: "#90caf9",
+          backgroundColor: "rgba(144,202,249,0.08)",
+          fill: true,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: "#90caf9",
+          yAxisID: "y2"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: "#333", font: { size: 11 } } }
+      },
+      scales: {
+        x: {
+          ticks: { color: "#555", maxRotation: 45, font: { size: 9 } },
+          grid: { color: "#f0f0f0" }
+        },
+        y: {
+          ticks: { color: "#555" },
+          grid: { color: "#f0f0f0" },
+          title: { display: true, text: "KG", color: "#555", font: { size: 10 } }
+        },
+        y2: {
+          position: "right",
+          ticks: { color: "#90caf9" },
+          grid: { display: false },
+          title: { display: true, text: "BOL", color: "#90caf9", font: { size: 10 } }
+        }
+      }
+    }
+  });
+}
+let chartMatProd = null;
+
+function dibujarMatProd() {
+  // Filtrar por mes y EXCLUIR resinas
+  const datos = filtrar(RAW.mp_prod, "FECHA")
+    .filter(r => !(r["DESCRIPCIÓN"] || "").toUpperCase().includes("RESINA"));
+
+  // Agrupar por DESCRIPCIÓN
+  const porDesc = {};
+  datos.forEach(r => {
+    const desc = r["DESCRIPCIÓN"] || "";
+    const cantidad = parseFloat(r["CANTIDAD"]) || 0;
+    if (!porDesc[desc]) porDesc[desc] = 0;
+    porDesc[desc] += cantidad;
+  });
+
+  // Ordenar de mayor a menor, top 10
+  const sorted = Object.entries(porDesc)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  const labels = sorted.map(e => e[0].length > 22 ? e[0].substring(0, 22) + "..." : e[0]);
+  const valores = sorted.map(e => e[1]);
+
+  if (chartMatProd) { chartMatProd.destroy(); chartMatProd = null; }
+
+  const ctx = document.getElementById("ch-mat-prod").getContext("2d");
+  chartMatProd = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: "#1565c0",
+        borderRadius: 3
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { color: "#555", font: { size: 9 } },
+          grid: { color: "#f0f0f0" }
+        },
+        y: {
+          ticks: { color: "#555", font: { size: 9 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+let chartPedidos = null;
+
+function dibujarPedidos() {
+  const datos = filtrar(RAW.mp_prod, "FECHA");
+
+  // Contar pedidos ÚNICOS por producto
+  const pedidosEmbol = new Set(
+    datos.filter(r => r["PRODUCTO"] === "EMBOL").map(r => r["N° PEDIDO"])
+  ).size;
+
+  const pedidosEmpacar = new Set(
+    datos.filter(r => r["PRODUCTO"] === "EMPACAR").map(r => r["N° PEDIDO"])
+  ).size;
+
+  const total = pedidosEmbol + pedidosEmpacar;
+
+  // Actualizar KPIs
+  document.getElementById("kpi-total").textContent = total;
+  document.getElementById("kpi-embol").textContent = pedidosEmbol;
+  document.getElementById("kpi-empacar").textContent = pedidosEmpacar;
+
+  if (chartPedidos) { chartPedidos.destroy(); chartPedidos = null; }
+
+  const ctx = document.getElementById("ch-pedidos").getContext("2d");
+  chartPedidos = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["EMPACAR", "EMBOL"],
+      datasets: [{
+        data: [pedidosEmpacar, pedidosEmbol],
+        backgroundColor: ["#1565c0", "#1a237e"],
+        borderColor: "#fff",
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { color: "#333", font: { size: 10 }, padding: 10 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (c) => {
+              const pct = (c.raw / total * 100).toFixed(1);
+              return ` ${c.label}: ${c.raw} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+let chartStockSeg = null;
+
+function dibujarStockSeg() {
+  const datos = RAW.stock_seg;
+
+  const filaStock = datos.find(r =>
+    (r["MES"] || "").toUpperCase().includes("STOK") ||
+    (r["MES"] || "").toUpperCase().includes("STOCK DE SEG")
+  );
+  const filaReorden = datos.find(r =>
+    (r["MES"] || "").toUpperCase().includes("PUNTO")
+  );
+
+  const materiales = ["CINT EXTERNO","CINT. INTERNO","TAPA BASE","ZUNCHO",
+                      "BOLSA PLASTICA","PRESINTO","GRAMPAS","PALLETS"];
+
+  const valoresStock = materiales.map(m => Math.round(parseFloat(filaStock?.[m]) || 0));
+  const valoresReorden = materiales.map(m => Math.round(parseFloat(filaReorden?.[m]) || 0));
+
+  const tbody = document.getElementById("tbody-stock-seg");
+  tbody.innerHTML = `
+    <tr style="background:#e3f2fd; font-weight:700; color:#1565c0;">
+      <td style="padding:8px 12px;">STOCK DE SEGURIDAD</td>
+      ${valoresStock.map(v => `<td style="padding:8px 12px; text-align:center;">${v.toLocaleString()}</td>`).join("")}
+    </tr>
+    <tr style="background:#e8f5e9; font-weight:700; color:#2e7d32;">
+      <td style="padding:8px 12px;">PUNTO DE REORDEN</td>
+      ${valoresReorden.map(v => `<td style="padding:8px 12px; text-align:center;">${v.toLocaleString()}</td>`).join("")}
+    </tr>
+  `;
+}
 </script>
 </body>
 </html>
