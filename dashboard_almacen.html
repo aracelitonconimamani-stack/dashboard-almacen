@@ -502,8 +502,19 @@ function dibujarStockMaterial() {
       indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: { ticks: { color: "#555", font: { size: 9 } }, grid: { color: "#f0f0f0" } },
-        y: { ticks: { color: "#555", font: { size: 9 } }, grid: { display: false } }
+        x: {
+          type: "logarithmic",
+          ticks: { 
+            color: "#555", 
+            font: { size: 9 },
+            callback: (v) => v >= 1000 ? Math.round(v/1000)+"k" : v
+          },
+          grid: { color: "#f0f0f0" }
+        },
+        y: {
+          ticks: { color: "#555", font: { size: 9 } },
+          grid: { display: false }
+        }
       }
     }
   });
