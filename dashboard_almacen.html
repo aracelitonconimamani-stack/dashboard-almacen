@@ -49,6 +49,10 @@
     color:#1565c0;
     text-transform:uppercase;
   }
+  .card-grafico{
+    width: 420px;
+    height: 300px;
+}
 </style>
 </head>
 <body>
@@ -71,11 +75,31 @@ let currentMes = "todos";
 async function fetchCSV(url) {
   const res = await fetch(url);
   const text = await res.text();
-  const rows = text.trim().split("\n").map(r => r.split(","));
-  const headers = rows[0].map(h => h.trim().replace(/"/g, ""));
-  return rows.slice(1).map(row => {
+  
+  function parseCSVLine(line) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') {
+        inQuotes = !inQuotes;
+      } else if (line[i] === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += line[i];
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  const lines = text.trim().split("\n");
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const values = parseCSVLine(line);
     const obj = {};
-    headers.forEach((h, i) => obj[h] = (row[i] || "").trim().replace(/"/g, ""));
+    headers.forEach((h, i) => obj[h] = (values[i] || "").trim());
     return obj;
   });
 }
@@ -258,18 +282,72 @@ function iniciarDashboard() {
     <!-- ====== PÁGINA ALM PT ====== -->
     <div class="page" id="page-pt">
 
-      <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
 
-        <div class="card">
-          <div class="card-title">Stock Actual Preformas</div>
-          <div style="position:relative; height:220px;">
-            <canvas id="ch-preformas"></canvas>
-          </div>
+      <div class="card">
+        <div class="card-title">Stock Actual Preformas</div>
+        <div style="position:relative; height:220px;">
+          <canvas id="ch-preformas"></canvas>
         </div>
-
       </div>
 
+      <!-- GAUGE OTIF -->
+      <div class="card" style="text-align:center;">
+        <div class="card-title">% OTIF</div>
+        <div style="position:relative; height:160px;">
+          <canvas id="ch-gauge"></canvas>
+        </div>
+        <div style="font-size:1.8rem; font-weight:700; color:#1565c0; margin-top:-10px;" id="otif-valor">—</div>
+        <div style="font-size:0.7rem; color:#999; margin-top:2px;">META: 90%</div>
+      </div>
+
+      <!-- KPIs ENTREGAS -->
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card" style="flex:1; text-align:center;">
+          <div class="card-title">% Entregas a Tiempo</div>
+          <div style="font-size:2rem; font-weight:700; color:#4caf50; padding:16px 0;" id="kpi-at">—</div>
+        </div>
+        <div class="card" style="flex:1; text-align:center;">
+          <div class="card-title">% Entregas Conformes</div>
+          <div style="font-size:2rem; font-weight:700; color:#4caf50; padding:16px 0;" id="kpi-conf">—</div>
+        </div>
+      </div>
     </div>
+    <!-- FILA 2 ALM PT -->
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+
+      <div class="card">
+        <div class="card-title">Despachos por Destino</div>
+        <div style="position:relative; height:220px;">
+          <canvas id="ch-destino"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Despachos EMBOL</div>
+        <div style="position:relative; height:220px;">
+          <canvas id="ch-desp-embol"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Despachos EMPACAR</div>
+        <div style="position:relative; height:220px;">
+          <canvas id="ch-desp-empacar"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILA 3 ALM PT -->
+    <div style="margin-bottom:12px;">
+      <div class="card">
+        <div class="card-title">Despachos Varios (La Paz)</div>
+        <div style="position:relative; height:250px;">
+          <canvas id="ch-desp-lp"></canvas>
+        </div>
+      </div>
+    </div>
+
     <!-- ====== FIN PÁGINA ALM PT ====== -->
   `;
 
@@ -298,6 +376,11 @@ function updateAll() {
     dibujarStockSeg();
   } else if (pagina === "page-pt") {
     dibujarPreformas();
+    dibujarOTIF();  
+    dibujarDestino();
+    dibujarDespEmbol();
+    dibujarDespEmpacar();
+    dibujarDespLP();
   }
 }
 
@@ -581,15 +664,20 @@ function dibujarStockSeg() {
 
 // ===== GRÁFICOS ALM PT =====
 let chartPreformas = null;
+
 function dibujarPreformas() {
-  const datos = filtrar(RAW.producto, "FECHA")
+  const datos = filtrar(RAW.producto, "FECHA");
+
+  // Agrupar STOCK ACTUAL por PRODUCTO (EMBOL / EMPACAR)
+  const porProducto = { "EMBOL": 0, "EMPACAR": 0 };
   
-  const porProducto = {};
   datos.forEach(r => {
-    const producto = r["PRODUCTO"] || "SIN PRODUCTO";
-    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
-    if (!porProducto[producto]) porProducto[producto] = 0;
-    porProducto[producto] += stock;
+    const prod = (r["PRODUCTO"] || "").trim().toUpperCase();
+    // Limpiar número con comas de miles: "378,000" → 378000
+    const stockStr = (r["STOCK ACTUAL"] || "0").replace(/,/g, "");
+    const stock = parseFloat(stockStr) || 0;
+    if (prod === "EMBOL") porProducto["EMBOL"] += stock;
+    else if (prod === "EMPACAR") porProducto["EMPACAR"] += stock;
   });
 
   const labels = Object.keys(porProducto);
@@ -603,23 +691,345 @@ function dibujarPreformas() {
     type: "doughnut",
     data: {
       labels,
-      datasets: [{ data: valores, backgroundColor: ["#1565c0", "#1a237e", "#42a5f5"], borderColor: "#fff", borderWidth: 3 }]
+      datasets: [{
+        data: valores,
+        backgroundColor: ["#42a5f5", "#1565c0"],
+        borderColor: "#fff",
+        borderWidth: 3
+      }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: {
-        legend: { position: "right", labels: { color: "#333", font: { size: 11 }, padding: 12 } },
-        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${(c.raw / total * 100).toFixed(1)}%` } }
+        legend: {
+          position: "right",
+          labels: { color: "#333", font: { size: 11 }, padding: 12 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (c) => {
+              const pct = (c.raw / total * 100).toFixed(1);
+              const mill = (c.raw / 1000000).toFixed(3);
+              return ` ${c.label}: ${mill} mill. (${pct}%)`;
+            }
+          }
+        }
       }
     }
   });
 }
+let chartGauge = null;
 
+function dibujarOTIF() {
+  const datos = filtrar(RAW.despachos, "FECHA");
 
+  const total = datos.length;
+  if (!total) return;
+
+  const aT = datos.filter(r => 
+    (r["ENTREGADO A TIEMPO?"] || "").trim().toUpperCase() === "SI"
+  ).length;
+
+  const conf = datos.filter(r => 
+    (r["ENTREGADO COMPLETO Y SIN DAÑO?"] || "").trim().toUpperCase() === "SI"
+  ).length;
+
+  const pctAT   = aT / total;
+  const pctConf = conf / total;
+  const otif    = pctAT * pctConf;
+
+  // Actualizar KPIs
+  document.getElementById("kpi-at").textContent   = (pctAT * 100).toFixed(1) + "%";
+  document.getElementById("kpi-conf").textContent = (pctConf * 100).toFixed(1) + "%";
+  document.getElementById("otif-valor").textContent = (otif * 100).toFixed(1) + "%";
+
+  // Color según meta 90%
+  const color = otif >= 0.90 ? "#4caf50" : "#f44336";
+  document.getElementById("otif-valor").style.color = color;
+
+  // Gauge
+  if (chartGauge) { chartGauge.destroy(); chartGauge = null; }
+
+  const ctx = document.getElementById("ch-gauge").getContext("2d");
+  chartGauge = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      datasets: [
+        {
+          data: [otif, 1 - otif],
+          backgroundColor: [color, "#f0f0f0"],
+          borderWidth: 0,
+          circumference: 180,
+          rotation: 270
+        },
+        {
+          data: [0.90, 0.10],
+          backgroundColor: ["transparent", "transparent"],
+          borderWidth: 0,
+          circumference: 180,
+          rotation: 270
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "70%",
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+}
+let chartDestino = null;
+
+function dibujarDestino() {
+  const datos = filtrar(RAW.despachos, "FECHA");
+
+  // DISTINCTCOUNT de NRO PEDIDO por DESTINO
+  const porDestino = {};
+  datos.forEach(r => {
+    const dest = (r["DESTINO"] || "").trim();
+    const pedido = (r["NRO PEDIDO"] || "").trim();
+    if (!dest || !pedido) return;
+    if (!porDestino[dest]) porDestino[dest] = new Set();
+    porDestino[dest].add(pedido);
+  });
+
+  // Convertir Sets a conteos
+  const labels = Object.keys(porDestino);
+  const valores = labels.map(l => porDestino[l].size);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  if (chartDestino) { chartDestino.destroy(); chartDestino = null; }
+
+  const ctx = document.getElementById("ch-destino").getContext("2d");
+  chartDestino = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: ["#1565c0", "#42a5f5", "#1976d2", "#90caf9", "#0d47a1"],
+        borderColor: "#fff",
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: { color: "#333", font: { size: 10 }, padding: 10 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (c) => {
+              const pct = (c.raw / total * 100).toFixed(1);
+              return ` ${c.label}: ${c.raw} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+let chartDespEmbol = null;
+
+function dibujarDespEmbol() {
+  // Filtrar por mes Y solo cliente EMBOL
+  const datos = filtrar(RAW.despachos, "FECHA")
+    .filter(r => (r["CLIENTE"] || "").trim().toUpperCase().includes("EMBOL"));
+
+  // DISTINCTCOUNT de NRO PEDIDO por DESTINO
+  const porDestino = {};
+  datos.forEach(r => {
+    const dest = (r["DESTINO"] || "").trim();
+    const pedido = (r["NRO PEDIDO"] || "").trim();
+    if (!dest || !pedido) return;
+    if (!porDestino[dest]) porDestino[dest] = new Set();
+    porDestino[dest].add(pedido);
+  });
+
+  const labels = Object.keys(porDestino);
+  const valores = labels.map(l => porDestino[l].size);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  if (chartDespEmbol) { chartDespEmbol.destroy(); chartDespEmbol = null; }
+
+  const ctx = document.getElementById("ch-desp-embol").getContext("2d");
+  chartDespEmbol = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: ["#1565c0", "#42a5f5", "#1976d2", "#90caf9", "#0d47a1"],
+        borderColor: "#fff",
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: { color: "#333", font: { size: 10 }, padding: 10 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (c) => {
+              const pct = (c.raw / total * 100).toFixed(1);
+              return ` ${c.label}: ${c.raw} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+let chartDespEmpacar = null;
+
+function dibujarDespEmpacar() {
+  // Filtrar por mes Y solo cliente EMPACAR (excluye EMBOL)
+  const datos = filtrar(RAW.despachos, "FECHA")
+    .filter(r => {
+      const cliente = (r["CLIENTE"] || "").trim().toUpperCase();
+      return cliente.includes("EMPACAR") && !cliente.includes("EMBOL");
+    });
+
+  // DISTINCTCOUNT de NRO PEDIDO por DESTINO
+  const porDestino = {};
+  datos.forEach(r => {
+    const dest = (r["DESTINO"] || "").trim();
+    const pedido = (r["NRO PEDIDO"] || "").trim();
+    if (!dest || !pedido) return;
+    if (!porDestino[dest]) porDestino[dest] = new Set();
+    porDestino[dest].add(pedido);
+  });
+
+  const labels = Object.keys(porDestino);
+  const valores = labels.map(l => porDestino[l].size);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  if (chartDespEmpacar) { chartDespEmpacar.destroy(); chartDespEmpacar = null; }
+
+  const ctx = document.getElementById("ch-desp-empacar").getContext("2d");
+  chartDespEmpacar = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: ["#1565c0", "#42a5f5", "#1976d2", "#90caf9", "#0d47a1"],
+        borderColor: "#fff",
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: { color: "#333", font: { size: 10 }, padding: 10 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (c) => {
+              const pct = (c.raw / total * 100).toFixed(1);
+              return ` ${c.label}: ${c.raw} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+let chartDespLP = null;
+
+function dibujarDespLP() {
+  // Filtrar por mes, destino LA PAZ, excluyendo EMBOL y EMPACAR
+  const datos = filtrar(RAW.despachos, "FECHA")
+    .filter(r => {
+      const destino = (r["DESTINO"] || "").trim().toUpperCase();
+      const cliente = (r["CLIENTE"] || "").trim().toUpperCase();
+      return destino === "LA PAZ" 
+        && !cliente.includes("EMBOL") 
+        && !cliente.includes("EMPACAR");
+    });
+
+  // DISTINCTCOUNT de NRO PEDIDO por CLIENTE
+  const porCliente = {};
+  datos.forEach(r => {
+    const cliente = (r["CLIENTE"] || "").trim();
+    const pedido = (r["NRO PEDIDO"] || "").trim();
+    if (!cliente || !pedido) return;
+    if (!porCliente[cliente]) porCliente[cliente] = new Set();
+    porCliente[cliente].add(pedido);
+  });
+
+  // Ordenar de mayor a menor
+  const sorted = Object.entries(porCliente)
+    .map(([k, v]) => ({ cliente: k, pedidos: v.size }))
+    .sort((a, b) => b.pedidos - a.pedidos);
+
+  const labels = sorted.map(e => 
+    e.cliente.length > 18 ? e.cliente.substring(0, 18) + "..." : e.cliente
+  );
+  const valores = sorted.map(e => e.pedidos);
+
+  const colores = [
+    "#1565c0","#1976d2","#1e88e5","#42a5f5","#64b5f6",
+    "#90caf9","#0d47a1","#1a237e","#2196f3","#bbdefb"
+  ];
+
+  if (chartDespLP) { chartDespLP.destroy(); chartDespLP = null; }
+
+  const ctx = document.getElementById("ch-desp-lp").getContext("2d");
+  chartDespLP = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: sorted.map((e, i) => ({
+        label: e.cliente.length > 18 ? e.cliente.substring(0, 18) + "..." : e.cliente,
+        data: labels.map((_, j) => j === i ? e.pedidos : 0),
+        backgroundColor: colores[i % colores.length],
+        borderRadius: 3
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: { color: "#333", font: { size: 9 }, padding: 8 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (c) => c.raw > 0 ? ` ${c.dataset.label}: ${c.raw}` : null
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { color: "#555", font: { size: 9 } },
+          grid: { color: "#f0f0f0" }
+        },
+        y: {
+          stacked: true,
+          ticks: { color: "#555" },
+          grid: { color: "#f0f0f0" }
+        }
+      }
+    }
+  });
+}
 // ===== ARRANCAR =====
 cargarDatos();
 </script>
 </body>
 </html>
-
-
