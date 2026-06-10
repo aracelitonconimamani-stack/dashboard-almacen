@@ -289,6 +289,20 @@ function iniciarDashboard() {
         <div style="position:relative; height:220px;">
           <canvas id="ch-preformas"></canvas>
         </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+          <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+            <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total Cajas</div>
+            <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-pref-total">—</div>
+          </div>
+          <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+            <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMBOL</div>
+            <div style="font-size:1.2rem; font-weight:700; color:#4caf50;" id="kpi-pref-embol">—</div>
+          </div>
+          <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+            <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMPACAR</div>
+            <div style="font-size:1.2rem; font-weight:700; color:#ff9800;" id="kpi-pref-empacar">—</div>
+          </div>
+        </div>
       </div>
 
       <!-- GAUGE OTIF -->
@@ -321,6 +335,28 @@ function iniciarDashboard() {
         <div style="position:relative; height:220px;">
           <canvas id="ch-destino"></canvas>
         </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px; margin-top:8px;">
+          <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+            <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+            <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-dest-total">—</div>
+          </div>
+          <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+            <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Cochabamba</div>
+            <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-dest-cbba">—</div>
+          </div>
+          <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+            <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">La Paz</div>
+            <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-dest-lp">—</div>
+          </div>
+          <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+            <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Santa Cruz</div>
+            <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-dest-sc">—</div>
+          </div>
+          <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+            <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Tarija</div>
+            <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-dest-tarija">—</div>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -328,6 +364,28 @@ function iniciarDashboard() {
         <div style="position:relative; height:220px;">
           <canvas id="ch-desp-embol"></canvas>
         </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px; margin-top:8px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-embol-total">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Cochabamba</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-embol-cbba">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">La Paz</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-embol-lp">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Santa Cruz</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-embol-sc">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Tarija</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-embol-tarija">—</div>
+            </div>
+          </div>        
       </div>
 
       <div class="card">
@@ -335,6 +393,20 @@ function iniciarDashboard() {
         <div style="position:relative; height:220px;">
           <canvas id="ch-desp-empacar"></canvas>
         </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; margin-top:8px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-empacar-total">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Cochabamba</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-empacar-cbba">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Santa Cruz</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-empacar-sc">—</div>
+            </div>
+          </div>       
       </div>
     </div>
 
@@ -470,7 +542,7 @@ function dibujarResinaCliente() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: "right", labels: { color: "#333", font: { size: 11 }, padding: 12 } },
-        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${(c.raw / total * 100).toFixed(1)}%` } }
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw.toLocaleString()} Kg (${(c.raw / total * 100).toFixed(1)}%)` } }
       }
     }
   });
@@ -702,6 +774,17 @@ function dibujarPreformas() {
     else if (prod === "EMPACAR") porProducto["EMPACAR"] += stock;
   });
 
+  // Calcular cajas por producto
+  const cajasEmbol = datos.filter(r => (r["PRODUCTO"]||"").trim().toUpperCase()==="EMBOL")
+                        .reduce((sum,r) => sum + (parseInt((r["CAJAS"]||"0").split(",")[0])||0), 0);
+  const cajasEmpacar = datos.filter(r => (r["PRODUCTO"]||"").trim().toUpperCase()==="EMPACAR")
+                        .reduce((sum,r) => sum + (parseInt((r["CAJAS"]||"0").split(",")[0])||0), 0);
+  const cajasTotal   = cajasEmbol + cajasEmpacar;
+
+  document.getElementById("kpi-pref-total").textContent   = cajasTotal.toLocaleString();
+  document.getElementById("kpi-pref-embol").textContent   = cajasEmbol.toLocaleString();
+  document.getElementById("kpi-pref-empacar").textContent = cajasEmpacar.toLocaleString();
+
   const labels = Object.keys(porProducto);
   const valores = labels.map(l => porProducto[l]);
   const total = valores.reduce((a, b) => a + b, 0);
@@ -732,8 +815,7 @@ function dibujarPreformas() {
           callbacks: {
             label: (c) => {
               const pct = (c.raw / total * 100).toFixed(1);
-              const mill = (c.raw / 1000000).toFixed(3);
-              return ` ${c.label}: ${mill} mill. (${pct}%)`;
+              return ` ${c.label}: ${c.raw.toLocaleString()} und. (${pct}%)`;
             }
           }
         }
@@ -822,6 +904,17 @@ function dibujarDestino() {
   const valores = labels.map(l => porDestino[l].size);
   const total = valores.reduce((a, b) => a + b, 0);
 
+  const getDesp = (dest) => {
+    const key = Object.keys(porDestino).find(k => k.toUpperCase().includes(dest));
+    return key ? porDestino[key].size : 0;
+  };
+
+  document.getElementById("kpi-dest-total").textContent  = total;
+  document.getElementById("kpi-dest-cbba").textContent   = getDesp("COCHABAMBA");
+  document.getElementById("kpi-dest-lp").textContent     = getDesp("LA PAZ");
+  document.getElementById("kpi-dest-sc").textContent     = getDesp("SANTA CRUZ");
+  document.getElementById("kpi-dest-tarija").textContent = getDesp("TARIJA");
+
   if (chartDestino) { chartDestino.destroy(); chartDestino = null; }
 
   const ctx = document.getElementById("ch-destino").getContext("2d");
@@ -876,6 +969,17 @@ function dibujarDespEmbol() {
   const labels = Object.keys(porDestino);
   const valores = labels.map(l => porDestino[l].size);
   const total = valores.reduce((a, b) => a + b, 0);
+
+  const getDespE = (dest) => {
+    const key = Object.keys(porDestino).find(k => k.toUpperCase().includes(dest));
+    return key ? porDestino[key].size : 0;
+  };
+
+  document.getElementById("kpi-embol-total").textContent  = total;
+  document.getElementById("kpi-embol-cbba").textContent   = getDespE("COCHABAMBA");
+  document.getElementById("kpi-embol-lp").textContent     = getDespE("LA PAZ");
+  document.getElementById("kpi-embol-sc").textContent     = getDespE("SANTA CRUZ");
+  document.getElementById("kpi-embol-tarija").textContent = getDespE("TARIJA");
 
   if (chartDespEmbol) { chartDespEmbol.destroy(); chartDespEmbol = null; }
 
@@ -934,6 +1038,15 @@ function dibujarDespEmpacar() {
   const labels = Object.keys(porDestino);
   const valores = labels.map(l => porDestino[l].size);
   const total = valores.reduce((a, b) => a + b, 0);
+
+  const getDespP = (dest) => {
+    const key = Object.keys(porDestino).find(k => k.toUpperCase().includes(dest));
+    return key ? porDestino[key].size : 0;
+  };
+
+  document.getElementById("kpi-empacar-total").textContent  = total;
+  document.getElementById("kpi-empacar-cbba").textContent   = getDespP("COCHABAMBA");
+  document.getElementById("kpi-empacar-sc").textContent     = getDespP("SANTA CRUZ");
 
   if (chartDespEmpacar) { chartDespEmpacar.destroy(); chartDespEmpacar = null; }
 
