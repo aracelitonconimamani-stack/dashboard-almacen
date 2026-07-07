@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Objetivo 1 - ALM MP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background:#f0f4f8; color:#1a1a2e; }
+
+  .header {
+    background: linear-gradient(135deg, #0d3b6e, #1565c0);
+    text-align:center; padding: 14px 20px;
+    border-bottom: 3px solid #1976d2;
+  }
+  .header h1 { font-size:1.3rem; font-weight:700; color:#fff; text-transform:uppercase; }
+  .header h2 { font-size:0.95rem; color:#bbdefb; margin-top:4px; }
+
+  .objetivo-bar {
+    background:#fff;
+    border-bottom: 2px solid #1565c0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 12px 30px;
+    text-align: center;
+  }
+  .objetivo-bar span {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #0d3b6e;
+    text-transform: uppercase;
+  }
+
+  .months-bar { background:#fff; display:flex; justify-content:center; gap:6px;
+    padding:10px 20px; flex-wrap:wrap; border-bottom:1px solid #ddd; 
+    box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  .month-btn { background:#e3f2fd; border:1px solid #1565c0; color:#1565c0;
+    padding:6px 14px; border-radius:20px; cursor:pointer; font-size:0.78rem;
+    font-weight:700; text-transform:uppercase; transition:all 0.2s; }
+  .month-btn:hover { background:#1565c0; color:#fff; }
+  .month-btn.active { background:#1565c0; color:#fff; }
+  .month-btn.sin-datos { background:#f5f5f5; border-color:#ccc; color:#aaa; cursor:default; }
+  .month-btn.sin-datos:hover { background:#f5f5f5; color:#aaa; }
+
+  .contenido { padding:16px; }
+
+  .card {
+    background:#fff;
+    border-radius:10px;
+    padding:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+  .card-title {
+    font-size:0.85rem;
+    font-weight:700;
+    margin-bottom:10px;
+    color:#1565c0;
+    text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+
+<script>
+const URL_RESINA = `https://docs.google.com/spreadsheets/d/e/2PACX-1vQ_CPYS2ap-BTzZlq7zR8ZgVOUJTjpZ30Cp0OfFp-tD80AxwJ992jzXlQobeU9iUt3841EnBaTvr_eD/pub?gid=1364179105&single=true&output=csv`;
+
+let RAW_RESINA = [];
+let currentMes = "todos";
+
+// ===== UTILIDADES =====
+async function fetchCSV(url) {
+  const res = await fetch(url);
+  const text = await res.text();
+
+  function parseCSVLine(line) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') {
+        inQuotes = !inQuotes;
+      } else if (line[i] === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += line[i];
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  const lines = text.trim().split("\n");
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const values = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (values[i] || "").trim());
+    return obj;
+  });
+}
+
+function getMes(fechaStr) {
+  if (!fechaStr) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio",
+                 "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const partes = fechaStr.split("/");
+  const mes = parseInt(partes[1]) - 1;
+  return meses[mes] || "";
+}
+
+function filtrar(arr, campoFecha = "FECHA") {
+  if (currentMes === "todos") return arr;
+  return arr.filter(r => getMes(r[campoFecha]) === currentMes);
+}
+
+function selectMonth(mes, btn) {
+  if (btn.classList.contains("sin-datos")) return;
+  currentMes = mes;
+  document.querySelectorAll(".month-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  updateAll();
+}
+
+// ===== CARGA =====
+async function cargarDatos() {
+  document.body.innerHTML = `<div style="text-align:center;padding:100px;font-size:1.2rem;color:#1565c0;">⏳ Cargando datos...</div>`;
+  try {
+    RAW_RESINA = await fetchCSV(URL_RESINA);
+    iniciarDashboard();
+  } catch(e) {
+    document.body.innerHTML = `<div style="text-align:center;padding:100px;color:red;">❌ Error: ${e.message}</div>`;
+  }
+}
+
+// ===== INICIAR =====
+function iniciarDashboard() {
+  document.body.innerHTML = `
+    <div class="header">
+      <h1>Objetivos y Metas de la Calidad e Inocuidad - Almacén</h1>
+      <h2>ALMACÉN MP</h2>
+    </div>
+
+    <div class="objetivo-bar">
+      <span>Objetivo 1: Controlar la diferencia de inventario en el almacén 218 (Resina ECOPET y Resina VIRGEN) en cantidad (Kg)</span>
+    </div>
+
+    <div class="months-bar">
+      <button class="month-btn active" onclick="selectMonth('todos', this)">TODOS</button>
+      <button class="month-btn" id="btn-enero"      onclick="selectMonth('enero', this)">ENE</button>
+      <button class="month-btn" id="btn-febrero"    onclick="selectMonth('febrero', this)">FEB</button>
+      <button class="month-btn" id="btn-marzo"      onclick="selectMonth('marzo', this)">MAR</button>
+      <button class="month-btn" id="btn-abril"      onclick="selectMonth('abril', this)">ABR</button>
+      <button class="month-btn" id="btn-mayo"       onclick="selectMonth('mayo', this)">MAY</button>
+      <button class="month-btn" id="btn-junio"      onclick="selectMonth('junio', this)">JUN</button>
+      <button class="month-btn" id="btn-julio"      onclick="selectMonth('julio', this)">JUL</button>
+      <button class="month-btn" id="btn-agosto"     onclick="selectMonth('agosto', this)">AGO</button>
+      <button class="month-btn" id="btn-septiembre" onclick="selectMonth('septiembre', this)">SEP</button>
+      <button class="month-btn" id="btn-octubre"    onclick="selectMonth('octubre', this)">OCT</button>
+      <button class="month-btn" id="btn-noviembre"  onclick="selectMonth('noviembre', this)">NOV</button>
+      <button class="month-btn" id="btn-diciembre"  onclick="selectMonth('diciembre', this)">DIC</button>
+    </div>
+
+    <div class="contenido">
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
+
+        <div class="card">
+          <div class="card-title">Resina Almacén</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="ch-resina"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Stock de Resina por Cliente</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="ch-resina-cliente"></canvas>
+          </div>
+        </div>
+    </div>  
+    
+        <div style="margin-top:12px; width:100%;">
+        <div class="card">
+            <div style="text-align:center; font-size:0.9rem; font-weight:700;
+                        color:#0d3b6e; margin-bottom:12px;" id="inv-fecha">
+            Inventario —
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+
+            <!-- EMPACAR -->
+            <div style="background:#e3f2fd; border-radius:8px; padding:14px;">
+                <div style="font-size:0.8rem; font-weight:700; color:#1565c0;
+                            text-transform:uppercase; margin-bottom:10px;">
+                Inventario EMPACAR
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div style="background:#fff; border-radius:6px; padding:10px; text-align:center;">
+                    <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Físico</div>
+                    <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="inv-emp-kg">—</div>
+                </div>
+                <div style="background:#fff; border-radius:6px; padding:10px; text-align:center;">
+                    <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Big Bag Físico</div>
+                    <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="inv-emp-bb">—</div>
+                </div>
+                <div style="background:#fff; border-radius:6px; padding:10px; text-align:center;">
+                    <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Sistema</div>
+                    <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="inv-emp-kg-sis">—</div>
+                </div>
+                <div style="background:#fff; border-radius:6px; padding:10px; text-align:center;">
+                    <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Big Bag Sistema</div>
+                    <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="inv-emp-bb-sis">—</div>
+                </div>
+                </div>
+                <div style="margin-top:8px; background:#f1f8e9; border-radius:6px; padding:8px;
+                            text-align:center; font-size:0.75rem; color:#81c784; font-style:italic;">
+                ✓ Sin diferencias en cantidad
+                </div>
+            </div>
+
+            <!-- EMBOL -->
+            <div style="background:#e3f2fd; border-radius:8px; padding:14px;">
+                <div style="font-size:0.8rem; font-weight:700; color:#1565c0;
+                            text-transform:uppercase; margin-bottom:10px;">
+                Inventario EMBOL
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div style="background:#fff; border-radius:6px; padding:10px; text-align:center;">
+                    <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Físico</div>
+                    <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="inv-emb-kg">—</div>
+                </div>
+                <div style="background:#fff; border-radius:6px; padding:10px; text-align:center;">
+                    <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Big Bag Físico</div>
+                    <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="inv-emb-bb">—</div>
+                </div>
+                <div style="background:#fff; border-radius:6px; padding:10px; text-align:center;">
+                    <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Kardex</div>
+                    <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="inv-emb-kg-kar">—</div>
+                </div>
+                <div style="background:#fff; border-radius:6px; padding:10px; text-align:center;">
+                    <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Big Bag Kardex</div>
+                    <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="inv-emb-bb-kar">—</div>
+                </div>
+                </div>
+                <div style="margin-top:8px; background:#f1f8e9; border-radius:6px; padding:8px;
+                            text-align:center; font-size:0.75rem; color:#81c784; font-style:italic;">
+                ✓ Sin diferencias en cantidad
+                </div>
+            </div>
+
+            </div>
+        </div>
+  `;
+
+  // Marcar meses sin datos
+  const mesesConDatos = [...new Set(RAW_RESINA.map(r => getMes(r.FECHA)).filter(Boolean))];
+  const todosMeses = ["enero","febrero","marzo","abril","mayo","junio",
+                      "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  todosMeses.forEach(m => {
+    const btn = document.getElementById("btn-" + m);
+    if (btn && !mesesConDatos.includes(m)) btn.classList.add("sin-datos");
+  });
+
+  updateAll();
+}
+
+// ===== ACTUALIZAR =====
+function updateAll() {
+  dibujarResina();
+  dibujarResinaCliente();
+  dibujarInventario();
+}
+
+// ===== GRÁFICO 1: RESINA ALMACÉN =====
+let chartResina = null;
+function dibujarResina() {
+  const datos = filtrar(RAW_RESINA, "FECHA");
+
+  const porArticulo = {};
+  datos.forEach(r => {
+    const art = r["ARTÍCULO"] || "";
+    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
+    const bigbag = parseFloat(r["BIG BAG"]) || 0;
+    if (!porArticulo[art]) porArticulo[art] = { stock: 0, bigbag: 0 };
+    porArticulo[art].stock += stock;
+    porArticulo[art].bigbag += bigbag;
+  });
+
+  const labels = Object.keys(porArticulo);
+  const stocks = labels.map(l => porArticulo[l].stock);
+  const bigbags = labels.map(l => porArticulo[l].bigbag);
+
+  if (chartResina) { chartResina.destroy(); chartResina = null; }
+
+  const ctx = document.getElementById("ch-resina").getContext("2d");
+  chartResina = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "STOCK ACTUAL (KG)",
+          data: stocks,
+          borderColor: "#1565c0",
+          backgroundColor: "rgba(21,101,192,0.12)",
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#1565c0"
+        },
+        {
+          label: "BIG BAG (BOL)",
+          data: bigbags,
+          borderColor: "#90caf9",
+          backgroundColor: "rgba(144,202,249,0.08)",
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#90caf9",
+          yAxisID: "y2"
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: "#333", font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: "#555", maxRotation: 45, font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { ticks: { color: "#555" }, grid: { color: "#f0f0f0" }, title: { display: true, text: "KG", color: "#555", font: { size: 10 } } },
+        y2: { position: "right", ticks: { color: "#90caf9" }, grid: { display: false }, title: { display: true, text: "BOL", color: "#90caf9", font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// ===== GRÁFICO 2: STOCK RESINA POR CLIENTE =====
+let chartResinaCliente = null;
+function dibujarResinaCliente() {
+  const datos = filtrar(RAW_RESINA, "FECHA");
+
+  const porDestino = {};
+  datos.forEach(r => {
+    const destino = r["DESTINO"] || "SIN DESTINO";
+    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
+    if (!porDestino[destino]) porDestino[destino] = 0;
+    porDestino[destino] += stock;
+  });
+
+  const labels = Object.keys(porDestino);
+  const valores = labels.map(l => porDestino[l]);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  if (chartResinaCliente) { chartResinaCliente.destroy(); chartResinaCliente = null; }
+
+  const ctx = document.getElementById("ch-resina-cliente").getContext("2d");
+  chartResinaCliente = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ 
+        data: valores, 
+        backgroundColor: ["#1565c0", "#1a237e", "#42a5f5"], 
+        borderColor: "#fff", 
+        borderWidth: 3 
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: "#333", font: { size: 11 }, padding: 12 } },
+        tooltip: { 
+          callbacks: { 
+            label: (c) => ` ${c.label}: ${c.raw.toLocaleString()} Kg (${(c.raw / total * 100).toFixed(1)}%)` 
+          } 
+        }
+      }
+    }
+  });
+}
+function dibujarInventario() {
+  const datos = filtrar(RAW_RESINA, "FECHA");
+
+  // Grupos
+  const artEmpacar = ["RESINA PET", "RESINA EASTLON", "RESINA PET JADE CZ328", "RESINA PET JADE CZ 302"];
+  const artEmbol   = ["RESINA ECOPET EMBOL", "RESINA VIRGEN EMBOL"];
+
+  const sumar = (grupos) => {
+    return datos
+      .filter(r => grupos.some(g => (r["ARTÍCULO"]||"").toUpperCase().includes(g.toUpperCase())))
+      .reduce((sum, r) => {
+        const stock = parseFloat((r["STOCK ACTUAL"]||"0").replace(/,/g,"")) || 0;
+        return sum + stock;
+      }, 0);
+  };
+
+  const kgEmpacar = Math.round(sumar(artEmpacar));
+  const kgEmbol   = Math.round(sumar(artEmbol));
+  const bbEmpacar = Math.round(kgEmpacar / 1100);
+  const bbEmbol   = Math.round(kgEmbol   / 1100);
+
+  // Fecha del inventario: última fecha del mes filtrado, evitando domingo
+  let fechaTexto = "—";
+  if (currentMes !== "todos" && datos.length > 0) {
+    const mesesNum = {
+      enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,
+      julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12
+    };
+    const mesNum = mesesNum[currentMes];
+    const anio = parseInt(datos[0].FECHA.split("/")[2]) || new Date().getFullYear();
+    let ultimoDia = new Date(anio, mesNum, 0); // último día del mes
+    // Si cae domingo (0), retroceder al sábado
+    if (ultimoDia.getDay() === 0) ultimoDia.setDate(ultimoDia.getDate() - 1);
+    fechaTexto = `${ultimoDia.getDate()}/${mesNum}/${anio}`;
+  }
+
+  // Renderizar tarjetas
+  document.getElementById("inv-fecha").textContent = 
+    currentMes === "todos" ? "Inventario — todos los meses" : `Inventario al ${fechaTexto}`;
+
+  document.getElementById("inv-emp-kg").textContent  = kgEmpacar.toLocaleString() + " Kg";
+  document.getElementById("inv-emp-bb").textContent  = bbEmpacar.toLocaleString() + " Big Bag";
+  document.getElementById("inv-emb-kg").textContent  = kgEmbol.toLocaleString() + " Kg";
+  document.getElementById("inv-emb-bb").textContent  = bbEmbol.toLocaleString() + " Big Bag";
+
+    document.getElementById("inv-emp-kg-sis").textContent  = kgEmpacar.toLocaleString() + " Kg";
+    document.getElementById("inv-emp-bb-sis").textContent  = bbEmpacar.toLocaleString() + " Big Bag";
+    document.getElementById("inv-emb-kg-kar").textContent  = kgEmbol.toLocaleString()   + " Kg";
+    document.getElementById("inv-emb-bb-kar").textContent  = bbEmbol.toLocaleString()   + " Big Bag";
+}
+// ===== ARRANCAR =====
+cargarDatos();
+</script>
+</body>
+</html>

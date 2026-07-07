@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Objetivo 1 - ALM PT</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background:#f0f4f8; color:#1a1a2e; }
+
+  .header {
+    background: linear-gradient(135deg, #0d3b6e, #1565c0);
+    text-align:center; padding: 14px 20px;
+    border-bottom: 3px solid #1976d2;
+  }
+  .header h1 { font-size:1.3rem; font-weight:700; color:#fff; text-transform:uppercase; }
+  .header h2 { font-size:0.95rem; color:#bbdefb; margin-top:4px; }
+
+  .objetivo-bar {
+    background:#fff;
+    border-bottom: 2px solid #1565c0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 12px 30px;
+    text-align: center;
+  }
+  .objetivo-bar span {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #0d3b6e;
+    text-transform: uppercase;
+  }
+
+  .months-bar { background:#fff; display:flex; justify-content:center; gap:6px;
+    padding:10px 20px; flex-wrap:wrap; border-bottom:1px solid #ddd;
+    box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  .month-btn { background:#e3f2fd; border:1px solid #1565c0; color:#1565c0;
+    padding:6px 14px; border-radius:20px; cursor:pointer; font-size:0.78rem;
+    font-weight:700; text-transform:uppercase; transition:all 0.2s; }
+  .month-btn:hover { background:#1565c0; color:#fff; }
+  .month-btn.active { background:#1565c0; color:#fff; }
+  .month-btn.sin-datos { background:#f5f5f5; border-color:#ccc; color:#aaa; cursor:default; }
+  .month-btn.sin-datos:hover { background:#f5f5f5; color:#aaa; }
+
+  .contenido { padding:16px; }
+
+  .card {
+    background:#fff;
+    border-radius:10px;
+    padding:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+  .card-title {
+    font-size:0.85rem;
+    font-weight:700;
+    margin-bottom:10px;
+    color:#1565c0;
+    text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+
+<script>
+const URL_DESPACHOS = `https://docs.google.com/spreadsheets/d/e/2PACX-1vQ_CPYS2ap-BTzZlq7zR8ZgVOUJTjpZ30Cp0OfFp-tD80AxwJ992jzXlQobeU9iUt3841EnBaTvr_eD/pub?gid=1951869092&single=true&output=csv`;
+
+let RAW_DESPACHOS = [];
+let currentMes = "todos";
+
+// ===== UTILIDADES =====
+async function fetchCSV(url) {
+  const res = await fetch(url);
+  const text = await res.text();
+
+  function parseCSVLine(line) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQuotes = !inQuotes; }
+      else if (line[i] === "," && !inQuotes) { result.push(current.trim()); current = ""; }
+      else { current += line[i]; }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  const lines = text.trim().split("\n");
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const values = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (values[i] || "").trim());
+    return obj;
+  });
+}
+
+function getMes(fechaStr) {
+  if (!fechaStr) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio",
+                 "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const partes = fechaStr.split("/");
+  const mes = parseInt(partes[1]) - 1;
+  return meses[mes] || "";
+}
+
+function filtrar(arr, campoFecha = "FECHA") {
+  if (currentMes === "todos") return arr;
+  return arr.filter(r => getMes(r[campoFecha]) === currentMes);
+}
+
+function selectMonth(mes, btn) {
+  if (btn.classList.contains("sin-datos")) return;
+  currentMes = mes;
+  document.querySelectorAll(".month-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  updateAll();
+}
+
+// ===== CARGA =====
+async function cargarDatos() {
+  document.body.innerHTML = `<div style="text-align:center;padding:100px;font-size:1.2rem;color:#1565c0;">⏳ Cargando datos...</div>`;
+  try {
+    RAW_DESPACHOS = await fetchCSV(URL_DESPACHOS);
+    iniciarDashboard();
+  } catch(e) {
+    document.body.innerHTML = `<div style="text-align:center;padding:100px;color:red;">❌ Error: ${e.message}</div>`;
+  }
+}
+
+// ===== INICIAR =====
+function iniciarDashboard() {
+  document.body.innerHTML = `
+    <div class="header">
+      <h1>Objetivos y Metas de la Calidad e Inocuidad - Almacén</h1>
+      <h2>ALMACÉN PT</h2>
+    </div>
+
+    <div class="objetivo-bar">
+      <span>Objetivo 1: Optimizar las operaciones de manipulación, despacho y transporte</span>
+    </div>
+
+    <div class="months-bar">
+      <button class="month-btn active" onclick="selectMonth('todos', this)">TODOS</button>
+      <button class="month-btn" id="btn-enero"      onclick="selectMonth('enero', this)">ENE</button>
+      <button class="month-btn" id="btn-febrero"    onclick="selectMonth('febrero', this)">FEB</button>
+      <button class="month-btn" id="btn-marzo"      onclick="selectMonth('marzo', this)">MAR</button>
+      <button class="month-btn" id="btn-abril"      onclick="selectMonth('abril', this)">ABR</button>
+      <button class="month-btn" id="btn-mayo"       onclick="selectMonth('mayo', this)">MAY</button>
+      <button class="month-btn" id="btn-junio"      onclick="selectMonth('junio', this)">JUN</button>
+      <button class="month-btn" id="btn-julio"      onclick="selectMonth('julio', this)">JUL</button>
+      <button class="month-btn" id="btn-agosto"     onclick="selectMonth('agosto', this)">AGO</button>
+      <button class="month-btn" id="btn-septiembre" onclick="selectMonth('septiembre', this)">SEP</button>
+      <button class="month-btn" id="btn-octubre"    onclick="selectMonth('octubre', this)">OCT</button>
+      <button class="month-btn" id="btn-noviembre"  onclick="selectMonth('noviembre', this)">NOV</button>
+      <button class="month-btn" id="btn-diciembre"  onclick="selectMonth('diciembre', this)">DIC</button>
+    </div>
+
+    <div class="contenido">
+
+      <!-- FILA 1 -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+
+        <!-- OTIF GAUGE -->
+        <div class="card" style="text-align:center;">
+          <div class="card-title">% OTIF</div>
+          <div style="position:relative; height:160px;">
+            <canvas id="ch-gauge"></canvas>
+          </div>
+          <div style="font-size:1.8rem; font-weight:700; color:#1565c0; margin-top:-10px;" id="otif-valor">—</div>
+          <div style="font-size:0.7rem; color:#999; margin-top:2px;">META: 90%</div>
+        </div>
+
+        <!-- ENTREGAS A TIEMPO + CONFORMES -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card" style="text-align:center; flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div class="card-title">% Entregas a Tiempo</div>
+            <div style="font-size:2.5rem; font-weight:700; padding:16px 0;" id="kpi-at">—</div>
+            <div style="font-size:0.7rem; color:#999;">META: 95%</div>
+          </div>
+          <div class="card" style="text-align:center; flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div class="card-title">% Entregas Conformes</div>
+            <div style="font-size:2.5rem; font-weight:700; padding:16px 0;" id="kpi-conf">—</div>
+            <div style="font-size:0.7rem; color:#999;">META: 85%</div>
+          </div>
+        </div>
+
+        <!-- DESPACHOS POR DESTINO -->
+        <div class="card">
+          <div class="card-title">Despachos por Destino</div>
+          <div style="position:relative; height:160px;">
+            <canvas id="ch-destino"></canvas>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-dest-total">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Cochabamba</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-dest-cbba">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">La Paz</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-dest-lp">—</div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Santa Cruz</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-dest-sc">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Tarija</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-dest-tarija">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FILA 2 -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+
+        <!-- DESPACHOS EMBOL -->
+        <div class="card">
+          <div class="card-title">Despachos EMBOL</div>
+          <div style="position:relative; height:200px;">
+            <canvas id="ch-desp-embol"></canvas>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-embol-total">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Cochabamba</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-embol-cbba">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">La Paz</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-embol-lp">—</div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Santa Cruz</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-embol-sc">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Tarija</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-embol-tarija">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DESPACHOS EMPACAR -->
+        <div class="card">
+          <div class="card-title">Despachos EMPACAR</div>
+          <div style="position:relative; height:200px;">
+            <canvas id="ch-desp-empacar"></canvas>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-empacar-total">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Cochabamba</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-empacar-cbba">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Santa Cruz</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#1565c0;" id="kpi-empacar-sc">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DESPACHOS VARIOS LA PAZ -->
+        <div class="card">
+          <div class="card-title">Despachos Varios (La Paz)</div>
+          <div style="position:relative; height:280px;">
+            <canvas id="ch-desp-lp"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  // Marcar meses sin datos
+  const mesesConDatos = [...new Set(RAW_DESPACHOS.map(r => getMes(r.FECHA)).filter(Boolean))];
+  const todosMeses = ["enero","febrero","marzo","abril","mayo","junio",
+                      "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  todosMeses.forEach(m => {
+    const btn = document.getElementById("btn-" + m);
+    if (btn && !mesesConDatos.includes(m)) btn.classList.add("sin-datos");
+  });
+
+  updateAll();
+}
+
+// ===== ACTUALIZAR =====
+function updateAll() {
+  dibujarOTIF();
+  dibujarDestino();
+  dibujarDespEmbol();
+  dibujarDespEmpacar();
+  dibujarDespLP();
+}
+
+// ===== GRÁFICOS =====
+let chartGauge = null;
+function dibujarOTIF() {
+  const datos = filtrar(RAW_DESPACHOS, "FECHA");
+  const total = datos.length;
+  if (!total) return;
+
+  const aT   = datos.filter(r => (r["ENTREGADO A TIEMPO?"]||"").trim().toUpperCase() === "SI").length;
+  const conf = datos.filter(r => (r["ENTREGADO COMPLETO Y SIN DAÑO?"]||"").trim().toUpperCase() === "SI").length;
+
+  const pctAT   = aT / total;
+  const pctConf = conf / total;
+  const otif    = pctAT * pctConf;
+
+  const colorAT   = pctAT   >= 0.95 ? "#4caf50" : "#f44336";
+  const colorConf = pctConf >= 0.85 ? "#4caf50" : "#f44336";
+  const colorOTIF = otif    >= 0.90 ? "#4caf50" : "#f44336";
+
+  document.getElementById("kpi-at").textContent   = (pctAT * 100).toFixed(1) + "%";
+  document.getElementById("kpi-at").style.color   = colorAT;
+  document.getElementById("kpi-conf").textContent = (pctConf * 100).toFixed(1) + "%";
+  document.getElementById("kpi-conf").style.color = colorConf;
+  document.getElementById("otif-valor").textContent = (otif * 100).toFixed(1) + "%";
+  document.getElementById("otif-valor").style.color = colorOTIF;
+
+  if (chartGauge) { chartGauge.destroy(); chartGauge = null; }
+  const ctx = document.getElementById("ch-gauge").getContext("2d");
+  chartGauge = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      datasets: [{
+        data: [otif, 1 - otif],
+        backgroundColor: [colorOTIF, "#f0f0f0"],
+        borderWidth: 0,
+        circumference: 180,
+        rotation: 270
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: "70%",
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+}
+
+let chartDestino = null;
+function dibujarDestino() {
+  const datos = filtrar(RAW_DESPACHOS, "FECHA");
+  const porDestino = {};
+  datos.forEach(r => {
+    const dest   = (r["DESTINO"]||"").trim();
+    const pedido = (r["NRO PEDIDO"]||"").trim();
+    if (!dest || !pedido) return;
+    if (!porDestino[dest]) porDestino[dest] = new Set();
+    porDestino[dest].add(pedido);
+  });
+
+  const labels = Object.keys(porDestino);
+  const valores = labels.map(l => porDestino[l].size);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  const getDesp = (dest) => {
+    const key = Object.keys(porDestino).find(k => k.toUpperCase().includes(dest));
+    return key ? porDestino[key].size : 0;
+  };
+
+  document.getElementById("kpi-dest-total").textContent   = total;
+  document.getElementById("kpi-dest-cbba").textContent    = getDesp("COCHABAMBA");
+  document.getElementById("kpi-dest-lp").textContent      = getDesp("LA PAZ");
+  document.getElementById("kpi-dest-sc").textContent      = getDesp("SANTA CRUZ");
+  document.getElementById("kpi-dest-tarija").textContent  = getDesp("TARIJA");
+
+  if (chartDestino) { chartDestino.destroy(); chartDestino = null; }
+  const ctx = document.getElementById("ch-destino").getContext("2d");
+  chartDestino = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ data: valores, backgroundColor: ["#1565c0","#42a5f5","#1976d2","#90caf9","#0d47a1"], borderColor: "#fff", borderWidth: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: "#333", font: { size: 10 }, padding: 10 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} (${(c.raw/total*100).toFixed(1)}%)` } }
+      }
+    }
+  });
+}
+
+let chartDespEmbol = null;
+function dibujarDespEmbol() {
+  const datos = filtrar(RAW_DESPACHOS, "FECHA")
+    .filter(r => (r["CLIENTE"]||"").trim().toUpperCase().includes("EMBOL"));
+
+  const porDestino = {};
+  datos.forEach(r => {
+    const dest   = (r["DESTINO"]||"").trim();
+    const pedido = (r["NRO PEDIDO"]||"").trim();
+    if (!dest || !pedido) return;
+    if (!porDestino[dest]) porDestino[dest] = new Set();
+    porDestino[dest].add(pedido);
+  });
+
+  const labels = Object.keys(porDestino);
+  const valores = labels.map(l => porDestino[l].size);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  const getDespE = (dest) => {
+    const key = Object.keys(porDestino).find(k => k.toUpperCase().includes(dest));
+    return key ? porDestino[key].size : 0;
+  };
+
+  document.getElementById("kpi-embol-total").textContent   = total;
+  document.getElementById("kpi-embol-cbba").textContent    = getDespE("COCHABAMBA");
+  document.getElementById("kpi-embol-lp").textContent      = getDespE("LA PAZ");
+  document.getElementById("kpi-embol-sc").textContent      = getDespE("SANTA CRUZ");
+  document.getElementById("kpi-embol-tarija").textContent  = getDespE("TARIJA");
+
+  if (chartDespEmbol) { chartDespEmbol.destroy(); chartDespEmbol = null; }
+  const ctx = document.getElementById("ch-desp-embol").getContext("2d");
+  chartDespEmbol = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ data: valores, backgroundColor: ["#1565c0","#42a5f5","#1976d2","#90caf9","#0d47a1"], borderColor: "#fff", borderWidth: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: "#333", font: { size: 10 }, padding: 10 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} (${(c.raw/total*100).toFixed(1)}%)` } }
+      }
+    }
+  });
+}
+
+let chartDespEmpacar = null;
+function dibujarDespEmpacar() {
+  const datos = filtrar(RAW_DESPACHOS, "FECHA")
+    .filter(r => {
+      const cliente = (r["CLIENTE"]||"").trim().toUpperCase();
+      return cliente.includes("EMPACAR") && !cliente.includes("EMBOL");
+    });
+
+  const porDestino = {};
+  datos.forEach(r => {
+    const dest   = (r["DESTINO"]||"").trim();
+    const pedido = (r["NRO PEDIDO"]||"").trim();
+    if (!dest || !pedido) return;
+    if (!porDestino[dest]) porDestino[dest] = new Set();
+    porDestino[dest].add(pedido);
+  });
+
+  const labels = Object.keys(porDestino);
+  const valores = labels.map(l => porDestino[l].size);
+  const total = valores.reduce((a, b) => a + b, 0);
+
+  const getDespP = (dest) => {
+    const key = Object.keys(porDestino).find(k => k.toUpperCase().includes(dest));
+    return key ? porDestino[key].size : 0;
+  };
+
+  document.getElementById("kpi-empacar-total").textContent   = total;
+  document.getElementById("kpi-empacar-cbba").textContent    = getDespP("COCHABAMBA");
+  document.getElementById("kpi-empacar-sc").textContent      = getDespP("SANTA CRUZ");
+
+  if (chartDespEmpacar) { chartDespEmpacar.destroy(); chartDespEmpacar = null; }
+  const ctx = document.getElementById("ch-desp-empacar").getContext("2d");
+  chartDespEmpacar = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ data: valores, backgroundColor: ["#1565c0","#42a5f5","#1976d2","#90caf9","#0d47a1"], borderColor: "#fff", borderWidth: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: "#333", font: { size: 10 }, padding: 10 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} (${(c.raw/total*100).toFixed(1)}%)` } }
+      }
+    }
+  });
+}
+
+let chartDespLP = null;
+function dibujarDespLP() {
+  const datos = filtrar(RAW_DESPACHOS, "FECHA")
+    .filter(r => {
+      const destino  = (r["DESTINO"]||"").trim().toUpperCase();
+      const cliente  = (r["CLIENTE"]||"").trim().toUpperCase();
+      return destino === "LA PAZ" && !cliente.includes("EMBOL") && !cliente.includes("EMPACAR");
+    });
+
+  const porCliente = {};
+  datos.forEach(r => {
+    const cliente = (r["CLIENTE"]||"").trim();
+    const pedido  = (r["NRO PEDIDO"]||"").trim();
+    if (!cliente || !pedido) return;
+    if (!porCliente[cliente]) porCliente[cliente] = new Set();
+    porCliente[cliente].add(pedido);
+  });
+
+  const sorted = Object.entries(porCliente)
+    .map(([k, v]) => ({ cliente: k, pedidos: v.size }))
+    .sort((a, b) => b.pedidos - a.pedidos);
+
+  const labels = sorted.map(e => e.cliente.length > 18 ? e.cliente.substring(0, 18) + "..." : e.cliente);
+  const colores = ["#1565c0","#1976d2","#1e88e5","#42a5f5","#64b5f6","#90caf9","#0d47a1","#1a237e","#2196f3","#bbdefb"];
+
+  if (chartDespLP) { chartDespLP.destroy(); chartDespLP = null; }
+  const ctx = document.getElementById("ch-desp-lp").getContext("2d");
+  chartDespLP = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: sorted.map((e, i) => ({
+        label: e.cliente.length > 18 ? e.cliente.substring(0, 18) + "..." : e.cliente,
+        data: labels.map((_, j) => j === i ? e.pedidos : 0),
+        backgroundColor: colores[i % colores.length],
+        borderRadius: 3
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: "#333", font: { size: 9 }, padding: 8 } },
+        tooltip: { callbacks: { label: (c) => c.raw > 0 ? ` ${c.dataset.label}: ${c.raw}` : null } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: "#555", font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { stacked: true, ticks: { color: "#555" }, grid: { color: "#f0f0f0" } }
+      }
+    }
+  });
+}
+
+// ===== ARRANCAR =====
+cargarDatos();
+</script>
+</body>
+</html>

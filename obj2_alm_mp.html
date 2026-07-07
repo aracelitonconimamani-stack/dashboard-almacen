@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Objetivo 2 - ALM MP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background:#f0f4f8; color:#1a1a2e; }
+
+  .header {
+    background: linear-gradient(135deg, #0d3b6e, #1565c0);
+    text-align:center; padding: 14px 20px;
+    border-bottom: 3px solid #1976d2;
+  }
+  .header h1 { font-size:1.3rem; font-weight:700; color:#fff; text-transform:uppercase; }
+  .header h2 { font-size:0.95rem; color:#bbdefb; margin-top:4px; }
+
+  .objetivo-bar {
+    background:#fff;
+    border-bottom: 2px solid #1565c0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 12px 30px;
+    text-align: center;
+  }
+  .objetivo-bar span {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #0d3b6e;
+    text-transform: uppercase;
+  }
+
+  .months-bar { background:#fff; display:flex; justify-content:center; gap:6px;
+    padding:10px 20px; flex-wrap:wrap; border-bottom:1px solid #ddd;
+    box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+  .month-btn { background:#e3f2fd; border:1px solid #1565c0; color:#1565c0;
+    padding:6px 14px; border-radius:20px; cursor:pointer; font-size:0.78rem;
+    font-weight:700; text-transform:uppercase; transition:all 0.2s; }
+  .month-btn:hover { background:#1565c0; color:#fff; }
+  .month-btn.active { background:#1565c0; color:#fff; }
+  .month-btn.sin-datos { background:#f5f5f5; border-color:#ccc; color:#aaa; cursor:default; }
+  .month-btn.sin-datos:hover { background:#f5f5f5; color:#aaa; }
+
+  .contenido { padding:16px; }
+
+  .card {
+    background:#fff;
+    border-radius:10px;
+    padding:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  }
+  .card-title {
+    font-size:0.85rem;
+    font-weight:700;
+    margin-bottom:10px;
+    color:#1565c0;
+    text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+
+<script>
+const URLS = {
+  mp_alm:    `https://docs.google.com/spreadsheets/d/e/2PACX-1vQ_CPYS2ap-BTzZlq7zR8ZgVOUJTjpZ30Cp0OfFp-tD80AxwJ992jzXlQobeU9iUt3841EnBaTvr_eD/pub?gid=493815543&single=true&output=csv`,
+  mp_prod:   `https://docs.google.com/spreadsheets/d/e/2PACX-1vQ_CPYS2ap-BTzZlq7zR8ZgVOUJTjpZ30Cp0OfFp-tD80AxwJ992jzXlQobeU9iUt3841EnBaTvr_eD/pub?gid=361394538&single=true&output=csv`,
+  stock_seg: `https://docs.google.com/spreadsheets/d/e/2PACX-1vQ_CPYS2ap-BTzZlq7zR8ZgVOUJTjpZ30Cp0OfFp-tD80AxwJ992jzXlQobeU9iUt3841EnBaTvr_eD/pub?gid=696897704&single=true&output=csv`
+};
+
+let RAW = {};
+let currentMes = "todos";
+
+// ===== UTILIDADES =====
+async function fetchCSV(url) {
+  const res = await fetch(url);
+  const text = await res.text();
+
+  function parseCSVLine(line) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQuotes = !inQuotes; }
+      else if (line[i] === "," && !inQuotes) { result.push(current.trim()); current = ""; }
+      else { current += line[i]; }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  const lines = text.trim().split("\n");
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const values = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (values[i] || "").trim());
+    return obj;
+  });
+}
+
+function getMes(fechaStr) {
+  if (!fechaStr) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio",
+                 "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const partes = fechaStr.split("/");
+  const mes = parseInt(partes[1]) - 1;
+  return meses[mes] || "";
+}
+
+function filtrar(arr, campoFecha = "FECHA") {
+  if (currentMes === "todos") return arr;
+  return arr.filter(r => getMes(r[campoFecha]) === currentMes);
+}
+
+function getFechaInventario(datos, campoFecha = "FECHA") {
+  if (currentMes === "todos" || !datos.length) return null;
+  const mesesNum = {
+    enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,
+    julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12
+  };
+  const mesNum = mesesNum[currentMes];
+  const anio = parseInt(datos[0][campoFecha].split("/")[2]) || new Date().getFullYear();
+  let ultimoDia = new Date(anio, mesNum, 0);
+  if (ultimoDia.getDay() === 0) ultimoDia.setDate(ultimoDia.getDate() - 1);
+  return `${ultimoDia.getDate()}/${mesNum}/${anio}`;
+}
+
+function selectMonth(mes, btn) {
+  if (btn.classList.contains("sin-datos")) return;
+  currentMes = mes;
+  document.querySelectorAll(".month-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  updateAll();
+}
+
+// ===== CARGA =====
+async function cargarDatos() {
+  document.body.innerHTML = `<div style="text-align:center;padding:100px;font-size:1.2rem;color:#1565c0;">⏳ Cargando datos...</div>`;
+  try {
+    const [mp_alm, mp_prod, stock_seg] = await Promise.all([
+      fetchCSV(URLS.mp_alm),
+      fetchCSV(URLS.mp_prod),
+      fetchCSV(URLS.stock_seg)
+    ]);
+    RAW = { mp_alm, mp_prod, stock_seg };
+    iniciarDashboard();
+  } catch(e) {
+    document.body.innerHTML = `<div style="text-align:center;padding:100px;color:red;">❌ Error: ${e.message}</div>`;
+  }
+}
+
+// ===== INICIAR =====
+function iniciarDashboard() {
+  document.body.innerHTML = `
+    <div class="header">
+      <h1>Objetivos y Metas de la Calidad e Inocuidad - Almacén</h1>
+      <h2>ALMACÉN MP</h2>
+    </div>
+
+    <div class="objetivo-bar">
+      <span>Objetivo 2: Mantener Stock Disponible en Insumos</span>
+    </div>
+
+    <div class="months-bar">
+      <button class="month-btn active" onclick="selectMonth('todos', this)">TODOS</button>
+      <button class="month-btn" id="btn-enero"      onclick="selectMonth('enero', this)">ENE</button>
+      <button class="month-btn" id="btn-febrero"    onclick="selectMonth('febrero', this)">FEB</button>
+      <button class="month-btn" id="btn-marzo"      onclick="selectMonth('marzo', this)">MAR</button>
+      <button class="month-btn" id="btn-abril"      onclick="selectMonth('abril', this)">ABR</button>
+      <button class="month-btn" id="btn-mayo"       onclick="selectMonth('mayo', this)">MAY</button>
+      <button class="month-btn" id="btn-junio"      onclick="selectMonth('junio', this)">JUN</button>
+      <button class="month-btn" id="btn-julio"      onclick="selectMonth('julio', this)">JUL</button>
+      <button class="month-btn" id="btn-agosto"     onclick="selectMonth('agosto', this)">AGO</button>
+      <button class="month-btn" id="btn-septiembre" onclick="selectMonth('septiembre', this)">SEP</button>
+      <button class="month-btn" id="btn-octubre"    onclick="selectMonth('octubre', this)">OCT</button>
+      <button class="month-btn" id="btn-noviembre"  onclick="selectMonth('noviembre', this)">NOV</button>
+      <button class="month-btn" id="btn-diciembre"  onclick="selectMonth('diciembre', this)">DIC</button>
+    </div>
+
+    <div class="contenido">
+
+      <!-- FILA 1 -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+
+        <div class="card">
+          <div class="card-title" id="titulo-stock-mat">Stock de Material en Almacén</div>
+          <div style="position:relative; height:280px;">
+            <canvas id="ch-stock-mat"></canvas>
+          </div>
+        </div>
+
+        <div class="card" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+          <div class="card-title">% Stock de Seguridad</div>
+          <div style="font-size:3rem; font-weight:700; color:#1565c0; padding:20px 0;" id="kpi-stock-seg">—</div>
+          <div style="font-size:0.75rem; color:#999;">META: ≥ 90% promedio trimestral</div>
+        </div>
+
+      </div>
+
+      <!-- FILA 2 -->
+      <div style="margin-bottom:12px;">
+        <div class="card">
+          <div class="card-title">Stock de Seguridad y Punto de Reorden</div>
+          <div style="overflow-x:auto;">
+            <table id="tabla-stock-seg" style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+              <thead>
+                <tr style="background:#1565c0; color:#fff;">
+                  <th style="padding:8px 12px; text-align:left;">Material</th>
+                  <th style="padding:8px 12px; text-align:center;">Cint. Externo</th>
+                  <th style="padding:8px 12px; text-align:center;">Cint. Interno</th>
+                  <th style="padding:8px 12px; text-align:center;">Tapa Base</th>
+                  <th style="padding:8px 12px; text-align:center;">Zuncho</th>
+                  <th style="padding:8px 12px; text-align:center;">Bolsa Plástica</th>
+                  <th style="padding:8px 12px; text-align:center;">Presinto</th>
+                  <th style="padding:8px 12px; text-align:center;">Grampas</th>
+                  <th style="padding:8px 12px; text-align:center;">Pallets</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-stock-seg"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILA 3: TABLA -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+
+        <div class="card">
+          <div class="card-title">Material Entregado a Producción</div>
+          <div style="position:relative; height:260px;">
+            <canvas id="ch-mat-prod"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Resina Entregada a Producción</div>
+          <div style="position:relative; height:280px;">
+            <canvas id="ch-resina-prod"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Pedidos MP</div>
+          <div style="position:relative; height:180px;">
+            <canvas id="ch-pedidos"></canvas>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px;">
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">Total</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#1565c0;" id="kpi-total">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMBOL</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#4caf50;" id="kpi-embol">—</div>
+            </div>
+            <div style="background:#f0f4f8; border-radius:6px; padding:8px; text-align:center;">
+              <div style="font-size:0.65rem; color:#666; text-transform:uppercase;">EMPACAR</div>
+              <div style="font-size:1.2rem; font-weight:700; color:#ff9800;" id="kpi-empacar">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+  // Marcar meses sin datos
+  const todasLasFilas = [...RAW.mp_alm, ...RAW.mp_prod];
+  const mesesConDatos = [...new Set(todasLasFilas.map(r => getMes(r.FECHA)).filter(Boolean))];
+  const todosMeses = ["enero","febrero","marzo","abril","mayo","junio",
+                      "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  todosMeses.forEach(m => {
+    const btn = document.getElementById("btn-" + m);
+    if (btn && !mesesConDatos.includes(m)) btn.classList.add("sin-datos");
+  });
+
+  updateAll();
+}
+
+// ===== ACTUALIZAR =====
+function updateAll() {
+  dibujarStockMaterial();
+  dibujarResinaProd();
+  dibujarMatProd();
+  dibujarPedidos();
+  dibujarStockSeg();
+}
+
+// ===== GRÁFICOS =====
+
+let chartStockMat = null;
+function dibujarStockMaterial() {
+  const datos = filtrar(RAW.mp_alm, "FECHA");
+
+  // Actualizar título con fecha
+  const fecha = getFechaInventario(RAW.mp_alm, "FECHA");
+  const titulo = document.getElementById("titulo-stock-mat");
+  if (titulo) {
+    titulo.textContent = fecha
+      ? `Stock de Material en Almacén — al ${fecha}`
+      : "Stock de Material en Almacén";
+  }
+
+  const porDesc = {};
+  datos.forEach(r => {
+    const desc = r["DESCRIPCIÓN"] || "";
+    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
+    const unidad = r["U/M"] || "";
+    if (!porDesc[desc]) porDesc[desc] = { total: 0, unidad };
+    porDesc[desc].total += stock;
+  });
+
+  const sorted = Object.entries(porDesc).sort((a, b) => b[1].total - a[1].total).slice(0, 10);
+  const labels = sorted.map(e => e[0].length > 25 ? e[0].substring(0, 25) + "..." : e[0]);
+  const valores = sorted.map(e => e[1].total);
+  const unidades = sorted.map(e => e[1].unidad);
+
+  if (chartStockMat) { chartStockMat.destroy(); chartStockMat = null; }
+
+  const ctx = document.getElementById("ch-stock-mat").getContext("2d");
+  chartStockMat = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [{ data: valores, backgroundColor: "#1565c0", borderRadius: 3 }] },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { 
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` ${c.raw.toLocaleString()} ${unidades[c.dataIndex]}` } }
+      },
+      scales: {
+        x: {
+          type: "logarithmic",
+          ticks: { color: "#555", font: { size: 9 }, callback: (v) => v >= 1000 ? Math.round(v/1000)+"k" : v },
+          grid: { color: "#f0f0f0" }
+        },
+        y: { ticks: { color: "#555", font: { size: 9 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+let chartResinaProd = null;
+function dibujarResinaProd() {
+  const datos = filtrar(RAW.mp_prod, "FECHA")
+    .filter(r => (r["DESCRIPCIÓN"] || "").toUpperCase().includes("RESINA"));
+
+  const porDesc = {};
+  datos.forEach(r => {
+    const desc = r["DESCRIPCIÓN"] || "";
+    const cantidad = parseFloat(r["CANTIDAD"]) || 0;
+    const bigbag = Math.round(cantidad / 1100);
+    if (!porDesc[desc]) porDesc[desc] = { cantidad: 0, bigbag: 0 };
+    porDesc[desc].cantidad += cantidad;
+    porDesc[desc].bigbag += bigbag;
+  });
+
+  const sorted = Object.entries(porDesc).sort((a, b) => b[1].cantidad - a[1].cantidad);
+  const labels = sorted.map(e => e[0].length > 20 ? e[0].substring(0, 20) + "..." : e[0]);
+  const cantidades = sorted.map(e => e[1].cantidad);
+  const bigbags = sorted.map(e => e[1].bigbag);
+
+  if (chartResinaProd) { chartResinaProd.destroy(); chartResinaProd = null; }
+
+  const ctx = document.getElementById("ch-resina-prod").getContext("2d");
+  chartResinaProd = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "CANTIDAD (KG)",
+          data: cantidades,
+          borderColor: "#1565c0", backgroundColor: "rgba(21,101,192,0.12)",
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#1565c0"
+        },
+        {
+          label: "BIG BAG (BOL)",
+          data: bigbags,
+          borderColor: "#90caf9", backgroundColor: "rgba(144,202,249,0.08)",
+          fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: "#90caf9",
+          yAxisID: "y2"
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: "#333", font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: "#555", maxRotation: 45, font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { ticks: { color: "#555" }, grid: { color: "#f0f0f0" }, title: { display: true, text: "KG", color: "#555", font: { size: 10 } } },
+        y2: { position: "right", ticks: { color: "#90caf9" }, grid: { display: false }, title: { display: true, text: "BOL", color: "#90caf9", font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+let chartMatProd = null;
+function dibujarMatProd() {
+  const datos = filtrar(RAW.mp_prod, "FECHA")
+    .filter(r => !(r["DESCRIPCIÓN"] || "").toUpperCase().includes("RESINA"));
+
+  const porDesc = {};
+  datos.forEach(r => {
+    const desc = r["DESCRIPCIÓN"] || "";
+    const cantidad = parseFloat(r["CANTIDAD"]) || 0;
+    const unidad = r["UNIDAD"] || "";
+    if (!porDesc[desc]) porDesc[desc] = { total: 0, unidad };
+    porDesc[desc].total += cantidad;
+  });
+
+  const sorted = Object.entries(porDesc).sort((a, b) => b[1].total - a[1].total).slice(0, 10);
+  const labels = sorted.map(e => e[0].length > 22 ? e[0].substring(0, 22) + "..." : e[0]);
+  const valores = sorted.map(e => e[1].total);
+  const unidades = sorted.map(e => e[1].unidad);
+
+  if (chartMatProd) { chartMatProd.destroy(); chartMatProd = null; }
+
+  const ctx = document.getElementById("ch-mat-prod").getContext("2d");
+  chartMatProd = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [{ data: valores, backgroundColor: "#1565c0", borderRadius: 3 }] },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      plugins: { 
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` ${c.raw.toLocaleString()} ${unidades[c.dataIndex]}` } }
+      },
+      scales: {
+        x: {
+          type: "logarithmic",
+          ticks: { color: "#555", font: { size: 9 }, callback: (v) => v >= 1000 ? Math.round(v/1000)+"k" : v },
+          grid: { color: "#f0f0f0" }
+        },
+        y: { ticks: { color: "#555", font: { size: 9 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+let chartPedidos = null;
+function dibujarPedidos() {
+  const datos = filtrar(RAW.mp_prod, "FECHA");
+
+  const pedidosEmbol = new Set(
+    datos.filter(r => r["PRODUCTO"] === "EMBOL").map(r => r["N° PEDIDO"])
+  ).size;
+  const pedidosEmpacar = new Set(
+    datos.filter(r => r["PRODUCTO"] === "EMPACAR").map(r => r["N° PEDIDO"])
+  ).size;
+  const total = pedidosEmbol + pedidosEmpacar;
+
+  document.getElementById("kpi-total").textContent   = total;
+  document.getElementById("kpi-embol").textContent   = pedidosEmbol;
+  document.getElementById("kpi-empacar").textContent = pedidosEmpacar;
+
+  if (chartPedidos) { chartPedidos.destroy(); chartPedidos = null; }
+
+  const ctx = document.getElementById("ch-pedidos").getContext("2d");
+  chartPedidos = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["EMPACAR", "EMBOL"],
+      datasets: [{ data: [pedidosEmpacar, pedidosEmbol], backgroundColor: ["#1565c0", "#1a237e"], borderColor: "#fff", borderWidth: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { color: "#333", font: { size: 10 }, padding: 10 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} (${(c.raw / total * 100).toFixed(1)}%)` } }
+      }
+    }
+  });
+}
+
+function dibujarStockSeg() {
+  const datos = RAW.stock_seg;
+
+  const filaStock = datos.find(r =>
+    (r["MES"] || "").toUpperCase().includes("STOK") ||
+    (r["MES"] || "").toUpperCase().includes("STOCK DE SEG")
+  );
+  const filaReorden = datos.find(r =>
+    (r["MES"] || "").toUpperCase().includes("PUNTO")
+  );
+
+  const materiales = ["CINT EXTERNO","CINT. INTERNO","TAPA BASE","ZUNCHO",
+                      "BOLSA PLASTICA","PRESINTO","GRAMPAS","PALLETS"];
+  const valoresStock   = materiales.map(m => Math.round(parseFloat(filaStock?.[m])   || 0));
+  const valoresReorden = materiales.map(m => Math.round(parseFloat(filaReorden?.[m]) || 0));
+
+  // KPI % stock seguridad
+  const datos_alm = filtrar(RAW.mp_alm, "FECHA");
+  const mapaStock = {};
+  datos_alm.forEach(r => {
+    const desc = (r["DESCRIPCIÓN"] || "").toUpperCase();
+    const stock = parseFloat(r["STOCK ACTUAL"]) || 0;
+    mapaStock[desc] = (mapaStock[desc] || 0) + stock;
+  });
+
+  const mapaNombres = {
+    "CINT EXTERNO": "CINTURON",
+    "CINT. INTERNO": "CINTURON INT",
+    "TAPA BASE": "TAPA",
+    "ZUNCHO": "ZUNCHO",
+    "BOLSA PLASTICA": "BOLSA",
+    "PRESINTO": "PRESINTO",
+    "GRAMPAS": "GRAMPAS",
+    "PALLETS": "PALLET"
+  };
+
+  let sumPct = 0, count = 0;
+  materiales.forEach((m, i) => {
+    const seg = valoresStock[i];
+    if (!seg) return;
+    const keyword = mapaNombres[m] || m;
+    const stockActual = Object.entries(mapaStock)
+      .filter(([k]) => k.includes(keyword))
+      .reduce((s, [, v]) => s + v, 0);
+    sumPct += Math.min(stockActual / seg, 1);
+    count++;
+  });
+
+  const pctSeg = count ? Math.round((sumPct / count) * 100) : 0;
+  const kpiEl = document.getElementById("kpi-stock-seg");
+  if (kpiEl) {
+    kpiEl.textContent = pctSeg + "%";
+    kpiEl.style.color = pctSeg >= 90 ? "#4caf50" : "#f44336";
+  }
+
+  const tbody = document.getElementById("tbody-stock-seg");
+  tbody.innerHTML = `
+    <tr style="background:#e3f2fd; font-weight:700; color:#1565c0;">
+      <td style="padding:8px 12px;">STOCK DE SEGURIDAD</td>
+      ${valoresStock.map(v => `<td style="padding:8px 12px; text-align:center;">${v.toLocaleString()}</td>`).join("")}
+    </tr>
+    <tr style="background:#e8f5e9; font-weight:700; color:#2e7d32;">
+      <td style="padding:8px 12px;">PUNTO DE REORDEN</td>
+      ${valoresReorden.map(v => `<td style="padding:8px 12px; text-align:center;">${v.toLocaleString()}</td>`).join("")}
+    </tr>
+  `;
+}
+
+// ===== ARRANCAR =====
+cargarDatos();
+</script>
+</body>
+</html>
