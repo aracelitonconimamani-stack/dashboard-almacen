@@ -325,7 +325,7 @@ function dibujarPreformas() {
   });
 }
 
- let chartDetalleEmpacar = null;
+let chartDetalleEmpacar = null;
 function dibujarDetalleEmpacar() {
   const datos = filtrar(RAW_PRODUCTO, "FECHA")
     .filter(r => (r["PRODUCTO"]||"").trim().toUpperCase() === "EMPACAR");
