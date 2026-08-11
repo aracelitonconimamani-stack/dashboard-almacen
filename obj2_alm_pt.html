@@ -333,7 +333,7 @@ function dibujarDetalleEmpacar() {
   const porDesc = {};
   datos.forEach(r => {
     const desc = (r["DESCRIPCIÓN"] || "").trim();
-    const cajas = Math.floor(parseFloat((r["CAJAS"]||"0").replace(/,/g,"")) || 0);
+    const cajas = Math.floor(parseFloat((r["CAJAS"]||"0").split(",")[0]) || 0);
     if (!desc) return;
     if (!porDesc[desc]) porDesc[desc] = 0;
     porDesc[desc] += cajas;
@@ -378,7 +378,7 @@ function dibujarDetalleEmbol() {
   const porDesc = {};
   datos.forEach(r => {
     const desc = (r["DESCRIPCIÓN"] || "").trim();
-    const cajas = Math.floor(parseFloat((r["CAJAS"]||"0").replace(/,/g,"")) || 0);
+    const cajas = Math.floor(parseFloat((r["CAJAS"]||"0").split(",")[0]) || 0);
     if (!desc) return;
     if (!porDesc[desc]) porDesc[desc] = 0;
     porDesc[desc] += cajas;
