@@ -360,7 +360,7 @@ function dibujarDetalleEmpacar() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: (c) => ` ${c.raw.toLocaleString()} cajas` } }
+        tooltip: { callbacks: { label: (c) => ` ${Math.floor(c.raw).toLocaleString()} cajas` } }
       },
       scales: {
         x: { ticks: { color: "#555", font: { size: 8 }, maxRotation: 45 }, grid: { display: false} },
@@ -405,7 +405,7 @@ function dibujarDetalleEmbol() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: (c) => ` ${c.raw.toLocaleString()} cajas` } }
+        tooltip: { callbacks: { label: (c) => ` ${Math.floor(c.raw).toLocaleString()} cajas` } }
       },
       scales: {
         x: { ticks: { color: "#555", font: { size: 8 }, maxRotation: 45 }, grid: { display: false} },
