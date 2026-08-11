@@ -357,15 +357,14 @@ function dibujarDetalleEmpacar() {
       }]
     },
     options: {
-      indexAxis: "y",
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: (c) => ` ${c.raw.toLocaleString()} cajas` } }
       },
       scales: {
-        x: { ticks: { color: "#555", font: { size: 9 } }, grid: { color: "#f0f0f0" } },
-        y: { ticks: { color: "#555", font: { size: 8 } }, grid: { display: false } }
+        x: { ticks: { color: "#555", font: { size: 8 }, maxRotation: 45 }, grid: { display: false} },
+        y: { type: "logarithmic", ticks: { color: "#555", font: { size: 9 }, callback: (v) => v >= 1000 ? Math.round(v/1000) + "k" : v }, grid: { color: "#f0f0f0" } }
       }
     }
   });
@@ -403,15 +402,14 @@ function dibujarDetalleEmbol() {
       }]
     },
     options: {
-      indexAxis: "y",
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: (c) => ` ${c.raw.toLocaleString()} cajas` } }
       },
       scales: {
-        x: { ticks: { color: "#555", font: { size: 9 } }, grid: { color: "#f0f0f0" } },
-        y: { ticks: { color: "#555", font: { size: 8 } }, grid: { display: false } }
+        x: { ticks: { color: "#555", font: { size: 8 }, maxRotation: 45 }, grid: { display: false} },
+        y: { type: "logarithmic", ticks: { color: "#555", font: { size: 9 }, callback: (v) => v >= 1000 ? Math.round(v/1000) + "k" : v }, grid: { color: "#f0f0f0" } }
       }
     }
   });
