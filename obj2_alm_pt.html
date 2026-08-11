@@ -143,9 +143,11 @@ function iniciarDashboard() {
 
     <div class="contenido">
 
-      <!-- FILA 1: ROSCA -->
-      <div style="margin-bottom:12px;">
-        <div class="card" style="max-width:500px; margin:0 auto;">
+      <!-- FILA 1: ROSCA + BARRAS -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+      
+        <!-- ROSCA -->
+        <div class="card">
           <div class="card-title">Stock Actual Preformas</div>
           <div style="position:relative; height:280px;">
             <canvas id="ch-preformas"></canvas>
@@ -165,6 +167,23 @@ function iniciarDashboard() {
             </div>
           </div>
         </div>
+      
+        <!-- BARRAS EMPACAR -->
+        <div class="card">
+          <div class="card-title">Detalle Producto EMPACAR</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="ch-detalle-empacar"></canvas>
+          </div>
+        </div>
+      
+        <!-- BARRAS EMBOL -->
+        <div class="card">
+          <div class="card-title">Detalle Producto EMBOL</div>
+          <div style="position:relative; height:320px;">
+            <canvas id="ch-detalle-embol"></canvas>
+          </div>
+        </div>
+      
       </div>
 
       <!-- FILA 2: INVENTARIO -->
@@ -257,6 +276,8 @@ function iniciarDashboard() {
 function updateAll() {
   dibujarPreformas();
   dibujarInventario();
+  dibujarDetalleEmpacar();
+  dibujarDetalleEmbol();
 }
 
 let chartPreformas = null;
@@ -299,6 +320,98 @@ function dibujarPreformas() {
       plugins: {
         legend: { position: "right", labels: { color: "#333", font: { size: 11 }, padding: 12 } },
         tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw.toLocaleString()} und. (${(c.raw/total*100).toFixed(1)}%)` } }
+      }
+    }
+  });
+}
+
+ let chartDetalleEmpacar = null;
+function dibujarDetalleEmpacar() {
+  const datos = filtrar(RAW_PRODUCTO, "FECHA")
+    .filter(r => (r["PRODUCTO"]||"").trim().toUpperCase() === "EMPACAR");
+
+  const porDesc = {};
+  datos.forEach(r => {
+    const desc = (r["DESCRIPCIÓN"] || "").trim();
+    const cajas = Math.floor(parseFloat((r["CAJAS"]||"0").replace(/,/g,"")) || 0);
+    if (!desc) return;
+    if (!porDesc[desc]) porDesc[desc] = 0;
+    porDesc[desc] += cajas;
+  });
+
+  const sorted = Object.entries(porDesc)
+    .sort((a, b) => b[1] - a[1]);
+  const labels = sorted.map(e => e[0].length > 20 ? e[0].substring(0, 20) + "..." : e[0]);
+  const valores = sorted.map(e => e[1]);
+
+  if (chartDetalleEmpacar) { chartDetalleEmpacar.destroy(); chartDetalleEmpacar = null; }
+  const ctx = document.getElementById("ch-detalle-empacar").getContext("2d");
+  chartDetalleEmpacar = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: "#1565c0",
+        borderRadius: 3
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` ${c.raw.toLocaleString()} cajas` } }
+      },
+      scales: {
+        x: { ticks: { color: "#555", font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { ticks: { color: "#555", font: { size: 8 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+let chartDetalleEmbol = null;
+function dibujarDetalleEmbol() {
+  const datos = filtrar(RAW_PRODUCTO, "FECHA")
+    .filter(r => (r["PRODUCTO"]||"").trim().toUpperCase() === "EMBOL");
+
+  const porDesc = {};
+  datos.forEach(r => {
+    const desc = (r["DESCRIPCIÓN"] || "").trim();
+    const cajas = Math.floor(parseFloat((r["CAJAS"]||"0").replace(/,/g,"")) || 0);
+    if (!desc) return;
+    if (!porDesc[desc]) porDesc[desc] = 0;
+    porDesc[desc] += cajas;
+  });
+
+  const sorted = Object.entries(porDesc)
+    .sort((a, b) => b[1] - a[1]);
+  const labels = sorted.map(e => e[0].length > 20 ? e[0].substring(0, 20) + "..." : e[0]);
+  const valores = sorted.map(e => e[1]);
+
+  if (chartDetalleEmbol) { chartDetalleEmbol.destroy(); chartDetalleEmbol = null; }
+  const ctx = document.getElementById("ch-detalle-embol").getContext("2d");
+  chartDetalleEmbol = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: valores,
+        backgroundColor: "#42a5f5",
+        borderRadius: 3
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` ${c.raw.toLocaleString()} cajas` } }
+      },
+      scales: {
+        x: { ticks: { color: "#555", font: { size: 9 } }, grid: { color: "#f0f0f0" } },
+        y: { ticks: { color: "#555", font: { size: 8 } }, grid: { display: false } }
       }
     }
   });
